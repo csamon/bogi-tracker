@@ -1,0 +1,23 @@
+[Unit]
+Description=Bogi Tracker — interne Allagrande Mapei
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin/bogi-tracker
+EnvironmentFile=/home/admin/bogi-tracker/.env
+ExecStart=/usr/bin/node /home/admin/bogi-tracker/server.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bogi-tracker
+
+# Garde-fous pour Pi Zero 2W
+MemoryMax=120M
+CPUQuota=80%
+
+[Install]
+WantedBy=multi-user.target
