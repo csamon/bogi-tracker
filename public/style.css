@@ -17,12 +17,13 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 #status-alert { color: #b40000; font-weight: 600; margin-top: 6px; }
 #status-alert.hidden { display: none; }
 
-/* Contrôles en bas à gauche (Windy occupe le top-right avec son menu) */
+/* Contrôles posés sous le statut, top-left — laisse le bas libre pour la timeline Windy */
 #controls {
-  position: absolute; bottom: 12px; left: 12px; z-index: 1000;
+  position: absolute; top: 110px; left: 12px; z-index: 1000;
   background: rgba(255, 255, 255, 0.92); padding: 10px 14px; border-radius: 8px;
   font-size: 13px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   display: flex; flex-direction: column; gap: 6px;
+  min-width: 220px;
 }
 #controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 #controls button {

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Bogi Tracker — Allagrande Mapei</title>
-  <link rel="stylesheet" href="/style.css?v=2" />
+  <link rel="stylesheet" href="/style.css?v=3" />
 </head>
 <body>
   <!-- Conteneur Windy : la carte (Leaflet 1.4.0) + l'UI Windy s'y rendent -->
@@ -13,13 +13,12 @@
   <!-- Bandeau d'état Mapei (superposé) -->
   <div id="status">
     <div id="status-boat">— chargement —</div>
-    <div id="status-ais">AIS : 0 cible</div>
     <div id="status-alert" class="hidden">⚠ Dernier point &gt; 45 min</div>
   </div>
 
   <!-- Contrôles (superposés) -->
   <div id="controls">
-    <label><input type="checkbox" id="toggle-ais-tracks" checked /> Traces AIS</label>
+    <label><input type="checkbox" id="toggle-ais" checked /> AIS (cibles + traces)</label>
     <label><input type="checkbox" id="toggle-points" checked /> Points YB cliquables</label>
     <button id="center-boat" type="button">Recentrer sur Mapei</button>
   </div>
@@ -32,6 +31,6 @@
   -->
   <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
   <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
-  <script src="/app.js?v=2"></script>
+  <script src="/app.js?v=3"></script>
 </body>
 </html>

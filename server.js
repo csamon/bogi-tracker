@@ -6,7 +6,7 @@ import { config } from './lib/config.js';
 import { makeLogger } from './lib/logger.js';
 import { createPasswordAuth } from './lib/auth.js';
 import { createStore } from './lib/store.js';
-import { startYbPoller, fetchPointDetail } from './lib/yb.js';
+import { startYbPoller, startTrackEnricher, fetchPointDetail } from './lib/yb.js';
 import { startAisClient, distanceNm } from './lib/ais.js';
 
 const log = makeLogger('server');
@@ -74,6 +74,12 @@ app.get('/api/state', auth.requireAuth, (req, res) => {
   res.json(snap);
 });
 
+// Détails de tous les points YB connus : { id: {speed, course, temp, datetime, altitude} }
+// Utilisé par le client pour colorer les segments selon la vitesse
+app.get('/api/track-details', auth.requireAuth, (req, res) => {
+  res.json({ details: store.getAllPointDetails() });
+});
+
 // Endpoint de diag : tous les AIS reçus sans filtre, avec distance à Mapei
 app.get('/api/ais-debug', auth.requireAuth, (req, res) => {
   const snap = store.snapshot();
@@ -114,6 +120,13 @@ const stopYb = startYbPoller({
   store,
 });
 
+// Enricher en arrière-plan : remplit pointDetails pour tous les points YB qui n'en ont pas,
+// permet ensuite l'affichage des segments colorés selon la vitesse
+const stopEnricher = startTrackEnricher({
+  keyword: config.yb.keyword,
+  store,
+});
+
 const stopAis = startAisClient({
   key: config.ais.key,
   radiusNm: config.ais.radiusNm,
@@ -127,6 +140,7 @@ const server = app.listen(config.port, config.bind, () => {
 function shutdown(signal) {
   log.info(`Reçu ${signal}, arrêt propre…`);
   stopYb();
+  stopEnricher();
   stopAis();
   store.shutdown();
   server.close(() => process.exit(0));
