@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Bogi Tracker — Allagrande Mapei</title>
-  <link rel="stylesheet" href="/style.css?v=7" />
+  <link rel="stylesheet" href="/style.css?v=8" />
 </head>
 <body>
   <!-- Conteneur Windy : la carte (Leaflet 1.4.0) + l'UI Windy s'y rendent -->
@@ -31,54 +31,40 @@
       <button id="help-close" type="button" aria-label="Fermer">×</button>
       <h2>Bogi Tracker — Mode d'emploi</h2>
 
-      <h3>À quoi ça sert ?</h3>
-      <p>Suivre Allagrande Mapei en temps réel pendant ses navigations,
-      voir la météo et les autres bateaux autour.</p>
+      <h3>Ce que vous voyez</h3>
+      <p>Position en temps réel d'Allagrande Mapei, sa trace passée, les bateaux
+      autour et la météo prévue.</p>
 
-      <h3>Le bateau et sa route</h3>
-      <p>La flèche rouge, c'est <b>Mapei</b>. Elle est orientée dans la direction où elle avance.
-      Sa trace est colorée selon sa vitesse :
-      <span style="color:#1d4ed8;font-weight:600">bleu = lent</span>,
-      <span style="color:#16a34a;font-weight:600">vert = moyen</span>,
-      <span style="color:#eab308;font-weight:600">jaune</span> et
-      <span style="color:#dc2626;font-weight:600">rouge = très rapide</span>
-      (jusqu'à 35 nœuds, environ 65 km/h).</p>
-      <p>Les petits ronds blancs sur la trace sont les positions enregistrées,
-      à peu près toutes les 15 minutes. <b>Clique sur un rond</b> pour voir
-      l'heure, la vitesse, le cap et la température de l'eau à ce moment-là.</p>
+      <h3>Le bateau</h3>
+      <p>La flèche rouge est Mapei, orientée selon son cap. Sa trace est colorée
+      selon sa vitesse :
+      <span style="color:#1d4ed8;font-weight:600">bleu</span> (lent) →
+      <span style="color:#16a34a;font-weight:600">vert</span> →
+      <span style="color:#eab308;font-weight:600">jaune</span> →
+      <span style="color:#dc2626;font-weight:600">rouge</span> (jusqu'à 35 nœuds).</p>
+      <p>Les points blancs sont les positions enregistrées toutes les 15 minutes.
+      Cliquer dessus affiche l'heure, la vitesse, le cap et la température de l'eau.</p>
 
-      <h3>Le vent et la météo</h3>
-      <p>La météo affichée vient de Windy. En haut à droite, le bouton
-      <b>« Vent »</b> te laisse choisir ce que tu veux voir : vent, vagues,
-      température, pression… Le menu de Windy permet aussi de changer le fond
-      de carte (satellite, sombre, classique…).</p>
-      <p>En bas de l'écran, <b>la barre de temps</b> te permet de voir la météo
-      prévue à différentes heures. Fais-la glisser ou clique sur le bouton
-      <b>Play</b> pour voir l'évolution sur les prochains jours.</p>
+      <h3>Météo (Windy)</h3>
+      <p>Bouton <b>Vent</b> en haut à droite pour changer la couche affichée :
+      vent, vagues, température, pression. La barre de temps en bas montre la
+      prévision sur les jours à venir.</p>
 
-      <h3>Où sera Mapei dans 1h / 5h / 10h ?</h3>
-      <p>Les trois badges rouges <b>+1h, +5h, +10h</b> devant le bateau montrent
-      où il serait s'il continuait à la même vitesse et au même cap qu'actuellement.
-      C'est une estimation simple — en vrai, la météo, la tactique et les manœuvres
-      peuvent changer la trajectoire.</p>
-      <p>Le badge orange <b>@HH:MM</b> est lié à la barre de temps Windy :
-      quand tu fais glisser la barre pour voir la météo plus tard, ce badge se
-      déplace en même temps pour te montrer où Mapei serait à cette heure-là.
-      Très pratique pour visualiser le bateau dans le vent à venir.</p>
+      <h3>Projection 1h / 5h / 10h</h3>
+      <p>Trois badges rouges indiquent où sera Mapei dans 1h, 5h et 10h
+      à cap et vitesse constants depuis sa dernière position connue.</p>
+      <p>Le badge orange <b>@HH:MM</b> est synchronisé avec la barre de temps
+      Windy : il montre la position projetée à l'heure de la prévision affichée.</p>
 
-      <h3>Les autres bateaux autour</h3>
-      <p>Les petits triangles bleu-vert sont les bateaux (cargos, voiliers, ferries…)
-      qui se trouvent dans un rayon d'environ <b>100 milles autour de Mapei</b>.
-      Clique sur un triangle pour voir le nom du bateau, sa vitesse et son cap.</p>
+      <h3>Bateaux autour</h3>
+      <p>Triangles bleu-vert : navires détectés dans un rayon de 100 milles
+      autour de Mapei. Cliquer affiche leur nom, cap et vitesse.</p>
 
-      <h3>Le menu à gauche</h3>
-      <p>Tu peux cocher / décocher chaque catégorie pour épurer la carte
-      selon ce que tu veux voir :</p>
-      <p>• <b>AIS</b> : afficher ou cacher les autres bateaux et leurs traces.<br/>
-      • <b>Points YB cliquables</b> : afficher ou cacher les petits ronds historiques sur la trace de Mapei.<br/>
-      • <b>Extrapolation</b> : afficher ou cacher les prédictions (+1h, +5h, +10h, et le curseur orange).</p>
-      <p>Le bouton <b>« Recentrer sur Mapei »</b> ramène la carte sur le bateau
-      si tu as zoomé ou navigué ailleurs.</p>
+      <h3>Menu</h3>
+      <p>Cocher / décocher pour afficher ou masquer chaque couche : <b>AIS</b>
+      (bateaux autour), <b>Points YB</b> (positions historiques),
+      <b>Extrapolation</b> (projections). <b>Recentrer sur Mapei</b> ramène
+      la carte sur le bateau.</p>
     </div>
   </div>
 
@@ -90,6 +76,6 @@
   -->
   <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
   <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
-  <script src="/app.js?v=7"></script>
+  <script src="/app.js?v=8"></script>
 </body>
 </html>
