@@ -64,12 +64,27 @@ app.get('/api/state', auth.requireAuth, (req, res) => {
   const boatLast = snap.boat.track.at(-1);
   if (boatLast) {
     const center = { lat: boatLast.lat, lon: boatLast.lon };
+    const totalCount = snap.ais.length;
     snap.ais = snap.ais.filter(v => {
       const last = v.track.at(-1);
       return last && distanceNm(center, last) <= config.ais.radiusNm;
     });
+    log.debug(`AIS filter: ${snap.ais.length}/${totalCount} cibles dans ${config.ais.radiusNm} NM`);
   }
   res.json(snap);
+});
+
+// Endpoint de diag : tous les AIS reçus sans filtre, avec distance à Mapei
+app.get('/api/ais-debug', auth.requireAuth, (req, res) => {
+  const snap = store.snapshot();
+  const boatLast = snap.boat.track.at(-1);
+  const center = boatLast ? { lat: boatLast.lat, lon: boatLast.lon } : null;
+  const data = snap.ais.map(v => {
+    const last = v.track.at(-1);
+    const dist = (center && last) ? distanceNm(center, last) : null;
+    return { mmsi: v.mmsi, name: v.name, distanceNm: dist != null ? Math.round(dist * 10) / 10 : null, lat: last?.lat, lon: last?.lon };
+  }).sort((a, b) => (a.distanceNm ?? 9999) - (b.distanceNm ?? 9999));
+  res.json({ count: data.length, mapei: center, ais: data });
 });
 app.get('/api/windy-key', auth.requireAuth, (req, res) => {
   res.json({ key: config.windy.key });
