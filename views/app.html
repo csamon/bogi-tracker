@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Bogi Tracker — Allagrande Mapei</title>
-  <link rel="stylesheet" href="/style.css?v=8" />
+  <link rel="stylesheet" href="/style.css?v=9" />
 </head>
 <body>
   <!-- Conteneur Windy : la carte (Leaflet 1.4.0) + l'UI Windy s'y rendent -->
@@ -21,7 +21,7 @@
     <label><input type="checkbox" id="toggle-ais" checked /> AIS (cibles + traces)</label>
     <label><input type="checkbox" id="toggle-points" checked /> Points YB cliquables</label>
     <label><input type="checkbox" id="toggle-extrap" checked /> Extrapolation (+1h / +5h / +10h)</label>
-    <button id="center-boat" type="button">Recentrer sur Mapei</button>
+    <button id="center-boat" type="button">Recentrer sur Bogi</button>
     <button id="help-btn" type="button">? Aide</button>
   </div>
 
@@ -31,10 +31,6 @@
       <button id="help-close" type="button" aria-label="Fermer">×</button>
       <h2>Bogi Tracker — Mode d'emploi</h2>
 
-      <h3>Ce que vous voyez</h3>
-      <p>Position en temps réel d'Allagrande Mapei, sa trace passée, les bateaux
-      autour et la météo prévue.</p>
-
       <h3>Le bateau</h3>
       <p>La flèche rouge est Mapei, orientée selon son cap. Sa trace est colorée
       selon sa vitesse :
@@ -42,8 +38,6 @@
       <span style="color:#16a34a;font-weight:600">vert</span> →
       <span style="color:#eab308;font-weight:600">jaune</span> →
       <span style="color:#dc2626;font-weight:600">rouge</span> (jusqu'à 35 nœuds).</p>
-      <p>Les points blancs sont les positions enregistrées toutes les 15 minutes.
-      Cliquer dessus affiche l'heure, la vitesse, le cap et la température de l'eau.</p>
 
       <h3>Météo (Windy)</h3>
       <p>Bouton <b>Vent</b> en haut à droite pour changer la couche affichée :
@@ -63,7 +57,7 @@
       <h3>Menu</h3>
       <p>Cocher / décocher pour afficher ou masquer chaque couche : <b>AIS</b>
       (bateaux autour), <b>Points YB</b> (positions historiques),
-      <b>Extrapolation</b> (projections). <b>Recentrer sur Mapei</b> ramène
+      <b>Extrapolation</b> (projections). <b>Recentrer sur Bogi</b> ramène
       la carte sur le bateau.</p>
     </div>
   </div>
@@ -76,6 +70,6 @@
   -->
   <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
   <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
-  <script src="/app.js?v=8"></script>
+  <script src="/app.js?v=9"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 // Bogi Tracker — frontend Windy Plugin API
 // Marker bateau + segments YB colorés selon la vitesse + AIS (cibles + traces) toggleable
 (() => {
-  const REFRESH_MS = 60_000;
+  const REFRESH_MS = 15_000;
   const ALERT_AGE_MS = 45 * 60 * 1000;
   const LS_AIS = 'bogi.ais';
   const LS_POINTS = 'bogi.points';
