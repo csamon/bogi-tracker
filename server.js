@@ -7,7 +7,7 @@ import { makeLogger } from './lib/logger.js';
 import { createPasswordAuth } from './lib/auth.js';
 import { createStore } from './lib/store.js';
 import { startYbPoller, fetchPointDetail } from './lib/yb.js';
-import { startAisClient } from './lib/ais.js';
+import { startAisClient, distanceNm } from './lib/ais.js';
 
 const log = makeLogger('server');
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -58,7 +58,18 @@ app.use(express.static(publicDir, {
 
 // API authentifiée
 app.get('/api/state', auth.requireAuth, (req, res) => {
-  res.json(store.snapshot());
+  const snap = store.snapshot();
+  // Filtrage AIS : on ne renvoie au client que les cibles dans `radiusNm` de Mapei.
+  // L'abonnement WS est plus large (cf. lib/ais.js) car aisstream ne pousse rien sur les petits bbox.
+  const boatLast = snap.boat.track.at(-1);
+  if (boatLast) {
+    const center = { lat: boatLast.lat, lon: boatLast.lon };
+    snap.ais = snap.ais.filter(v => {
+      const last = v.track.at(-1);
+      return last && distanceNm(center, last) <= config.ais.radiusNm;
+    });
+  }
+  res.json(snap);
 });
 app.get('/api/windy-key', auth.requireAuth, (req, res) => {
   res.json({ key: config.windy.key });
