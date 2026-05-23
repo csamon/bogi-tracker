@@ -137,6 +137,9 @@
     let segments = [];                  // L.polyline par paire de points consécutifs
     let extrapMarkers = [];             // markers +1h/+5h/+10h
     let extrapLine = null;              // pointillé reliant la position au +10h
+    let timelineMarker = null;          // suit la timeline Windy (orange, position projetée)
+    let currentLast = null;             // dernière position connue (pour re-render au changement timestamp)
+    let currentDetail = null;
     const pointMarkers = new Map();     // id -> L.circleMarker
     const aisMarkers = new Map();       // mmsi -> L.marker
     const aisTracks = new Map();        // mmsi -> L.polyline
@@ -165,6 +168,57 @@
       for (const m of extrapMarkers) map.removeLayer(m);
       extrapMarkers = [];
       if (extrapLine) { map.removeLayer(extrapLine); extrapLine = null; }
+    }
+    function clearTimelineMarker() {
+      if (timelineMarker) { map.removeLayer(timelineMarker); timelineMarker = null; }
+    }
+
+    // === Curseur dynamique synchronisé à la timeline Windy ===
+    // Quand l'utilisateur déplace le curseur temps de Windy, on projette la position de Mapei
+    // à ce timestamp en supposant cap+vitesse constants (cohérent avec les badges fixes).
+    function renderTimelineProjection(last, detail, timestamp) {
+      if (!showExtrap || !last || !detail || detail.speed == null || detail.course == null || detail.speed <= 0) {
+        clearTimelineMarker();
+        return;
+      }
+      const deltaH = (timestamp - last.at) / 3_600_000;
+      // Ne pas afficher si le curseur est sur le passé (avant le dernier point) ou trop proche du présent
+      if (deltaH < 0.25) {
+        clearTimelineMarker();
+        return;
+      }
+      const distNm = detail.speed * deltaH;
+      const dest = destinationPoint(last.lat, last.lon, detail.course, distNm);
+      const tStr = new Date(timestamp).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="timeline-badge">@${tStr}</div>`,
+        iconSize: [44, 15], iconAnchor: [22, 7],
+      });
+      if (!timelineMarker) {
+        timelineMarker = L.marker([dest.lat, dest.lon], { icon }).addTo(map);
+      } else {
+        timelineMarker.setLatLng([dest.lat, dest.lon]);
+        timelineMarker.setIcon(icon);
+      }
+      timelineMarker.bindPopup(`
+        <div class="yb-popup">
+          <div class="yb-time">Projection @ ${new Date(timestamp).toLocaleString('fr-FR')}</div>
+          <div class="yb-row"><span>Delta</span><span>+${deltaH.toFixed(1)} h</span></div>
+          <div class="yb-row"><span>Hypothèse</span><span>cap+vitesse constants</span></div>
+          <div class="yb-row"><span>Vitesse</span><span>${detail.speed.toFixed(1)} kn</span></div>
+          <div class="yb-row"><span>Cap</span><span>${Math.round(detail.course)}°</span></div>
+          <div class="yb-row"><span>Distance</span><span>${distNm.toFixed(0)} NM</span></div>
+          <div class="yb-row"><span>Position</span><span>${fmtCoords(dest.lat, dest.lon)}</span></div>
+        </div>
+      `);
+    }
+
+    // Abonnement à la timeline Windy (une seule fois)
+    try {
+      windyAPI.store.on('timestamp', (ts) => renderTimelineProjection(currentLast, currentDetail, ts));
+    } catch (e) {
+      console.warn('Windy timestamp subscription failed', e);
     }
     function renderExtrap(last, detail) {
       clearExtrap();
@@ -278,7 +332,11 @@
       document.getElementById('status-alert').classList.toggle('hidden', age <= ALERT_AGE_MS);
 
       // Extrapolation depuis le dernier point connu
+      currentLast = last;
+      currentDetail = detail;
       renderExtrap(last, detail);
+      // Et le curseur dynamique synchronisé à la timeline Windy
+      try { renderTimelineProjection(last, detail, windyAPI.store.get('timestamp')); } catch (e) { /* timestamp pas encore prêt */ }
     }
 
     function renderAis(ais, now) {
@@ -389,12 +447,26 @@
     extrapToggle.addEventListener('change', e => {
       showExtrap = e.target.checked;
       localStorage.setItem(LS_EXTRAP, showExtrap ? '1' : '0');
-      if (!showExtrap) clearExtrap();
-      else refresh();
+      if (!showExtrap) {
+        clearExtrap();
+        clearTimelineMarker();
+      } else {
+        refresh();
+      }
     });
 
     document.getElementById('center-boat').addEventListener('click', () => {
       if (boatMarker) map.setView(boatMarker.getLatLng(), 9);
+    });
+
+    // Bulle d'aide
+    const helpBtn = document.getElementById('help-btn');
+    const helpModal = document.getElementById('help-modal');
+    const helpClose = document.getElementById('help-close');
+    helpBtn.addEventListener('click', () => helpModal.classList.remove('hidden'));
+    helpClose.addEventListener('click', () => helpModal.classList.add('hidden'));
+    helpModal.addEventListener('click', (e) => {
+      if (e.target === helpModal) helpModal.classList.add('hidden');
     });
 
     // === Lancement ===
