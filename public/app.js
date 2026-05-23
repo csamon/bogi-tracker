@@ -27,7 +27,15 @@
     const lat = last?.lat ?? 47;
     const lon = last?.lon ?? -3;
 
-    // Init Windy : libBoot.js a exposé `windyInit` et `L`
+    // Vérifie que libBoot.js a exposé windyInit (sinon erreur réseau Windy)
+    // eslint-disable-next-line no-undef
+    if (typeof windyInit !== 'function') {
+      document.getElementById('status-boat').textContent = '⚠ Windy non chargé';
+      return;
+    }
+
+    // Init Windy : on évite overlay/level dans les options initiales
+    // (à set via api.store.set() une fois l'API prête, sinon plante sur certaines versions)
     // eslint-disable-next-line no-undef
     windyInit({
       key,
@@ -35,13 +43,13 @@
       lat,
       lon,
       zoom: 7,
-      overlay: 'wind',
-      level: 'surface',
     }, (windyAPI) => bootMap(windyAPI, initialState));
   })();
 
   function bootMap(windyAPI, initialState) {
     const map = windyAPI.map; // L.Map instance Leaflet 1.4.0
+    // Active l'overlay vent (set après init pour compat versions Windy)
+    try { windyAPI.store.set('overlay', 'wind'); } catch (e) { console.warn('overlay set failed', e); }
 
     // === Helpers d'icônes ===
     function boatIcon(course) {

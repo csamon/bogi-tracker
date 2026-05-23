@@ -46,8 +46,15 @@ app.get('/', auth.requireAuth, (req, res) => {
   res.sendFile(path.join(viewsDir, 'app.html'));
 });
 
-// Statiques (CSS, JS) — publics car ne révèlent que la structure UI, pas de données
-app.use(express.static(publicDir, { etag: false, index: false }));
+// Statiques (CSS, JS) — publics car ne révèlent que la structure UI, pas de données.
+// no-cache : force la revalidation à chaque visite (sinon Cloudflare/navigateur peuvent servir une vieille version)
+app.use(express.static(publicDir, {
+  etag: false,
+  index: false,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  },
+}));
 
 // API authentifiée
 app.get('/api/state', auth.requireAuth, (req, res) => {

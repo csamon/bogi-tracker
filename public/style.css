@@ -1,8 +1,8 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 
-/* Conteneur Windy en plein écran */
-#windy { position: absolute; inset: 0; }
+/* Conteneur Windy en plein écran — width/height explicites comme exigé par Windy */
+#windy { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; }
 
 /* Bandeau d'état Mapei en haut à gauche */
 #status {
