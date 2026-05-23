@@ -372,8 +372,8 @@
           let t = aisTracks.get(mmsi);
           if (!t) {
             // Trace cyan vif avec halo blanc derrière pour contraster sur le fond vent
-            const halo = L.polyline(latlngs, { color: '#ffffff', weight: 5, opacity: 0.6 }).addTo(map);
-            const line = L.polyline(latlngs, { color: '#22d3ee', weight: 3, opacity: 0.95 }).addTo(map);
+            const halo = L.polyline(latlngs, { color: '#ffffff', weight: 3, opacity: 0.55 }).addTo(map);
+            const line = L.polyline(latlngs, { color: '#22d3ee', weight: 1.5, opacity: 0.95 }).addTo(map);
             t = { halo, line };
             aisTracks.set(mmsi, t);
           } else {
