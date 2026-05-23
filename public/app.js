@@ -91,12 +91,37 @@
       return { lat: φ2 * 180 / Math.PI, lon: ((λ2 * 180 / Math.PI + 540) % 360) - 180 };
     }
 
-    // === Coloration vitesse : bleu (0 kn) -> rouge (35 kn) via cyan/vert/jaune ===
+    // === Coloration vitesse : gradient type Turbo (perceptuellement uniforme) ===
+    // Stops resserrés dans la plage opérationnelle IMOCA (15-30 kn) pour mieux distinguer
+    // les petites variations de vitesse.
+    const SPEED_STOPS = [
+      { v: 0,  c: [48, 18, 90] },     // violet sombre
+      { v: 4,  c: [70, 60, 160] },    // bleu-violet
+      { v: 8,  c: [50, 110, 215] },   // bleu
+      { v: 12, c: [40, 175, 220] },   // bleu-cyan
+      { v: 16, c: [50, 210, 180] },   // cyan-vert
+      { v: 19, c: [120, 225, 100] },  // vert lime
+      { v: 22, c: [200, 230, 50] },   // vert-jaune
+      { v: 25, c: [250, 200, 40] },   // jaune
+      { v: 28, c: [250, 145, 30] },   // orange
+      { v: 31, c: [235, 80, 35] },    // rouge-orange
+      { v: 35, c: [165, 25, 30] },    // rouge sombre
+    ];
     function speedColor(speed) {
       if (speed == null || Number.isNaN(speed)) return '#808080';
-      const v = Math.max(SPEED_MIN_KN, Math.min(SPEED_MAX_KN, speed)) / SPEED_MAX_KN;
-      const hue = 240 * (1 - v); // 240 (bleu) -> 0 (rouge)
-      return `hsl(${hue}, 90%, 50%)`;
+      const s = Math.max(SPEED_MIN_KN, Math.min(SPEED_MAX_KN, speed));
+      for (let i = 1; i < SPEED_STOPS.length; i++) {
+        if (s <= SPEED_STOPS[i].v) {
+          const a = SPEED_STOPS[i - 1];
+          const b = SPEED_STOPS[i];
+          const t = (s - a.v) / (b.v - a.v);
+          const r = Math.round(a.c[0] + t * (b.c[0] - a.c[0]));
+          const g = Math.round(a.c[1] + t * (b.c[1] - a.c[1]));
+          const bl = Math.round(a.c[2] + t * (b.c[2] - a.c[2]));
+          return `rgb(${r},${g},${bl})`;
+        }
+      }
+      return 'rgb(165,25,30)';
     }
 
     // === Helpers formatage ===
