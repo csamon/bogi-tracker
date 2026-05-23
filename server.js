@@ -6,7 +6,7 @@ import { config } from './lib/config.js';
 import { makeLogger } from './lib/logger.js';
 import { createPasswordAuth } from './lib/auth.js';
 import { createStore } from './lib/store.js';
-import { startYbPoller } from './lib/yb.js';
+import { startYbPoller, fetchPointDetail } from './lib/yb.js';
 import { startAisClient } from './lib/ais.js';
 
 const log = makeLogger('server');
@@ -26,7 +26,7 @@ const app = express();
 app.disable('x-powered-by');
 app.set('etag', false);
 
-// Healthz : pas d'auth (Cloudflare + monitoring local)
+// Healthz : pas d'auth
 app.get('/healthz', (req, res) => {
   const last = store.lastBoatPosition();
   res.json({
@@ -46,8 +46,7 @@ app.get('/', auth.requireAuth, (req, res) => {
   res.sendFile(path.join(viewsDir, 'app.html'));
 });
 
-// Statiques (CSS, JS) — publics car ne révèlent que la structure UI, pas de données.
-// L'index par défaut est désactivé pour ne pas court-circuiter le middleware d'auth.
+// Statiques (CSS, JS) — publics car ne révèlent que la structure UI, pas de données
 app.use(express.static(publicDir, { etag: false, index: false }));
 
 // API authentifiée
@@ -56,6 +55,23 @@ app.get('/api/state', auth.requireAuth, (req, res) => {
 });
 app.get('/api/windy-key', auth.requireAuth, (req, res) => {
   res.json({ key: config.windy.key });
+});
+
+// Détail d'un point YB par son id (cache puis fetch à la demande)
+app.get('/api/yb-point/:id', auth.requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: 'id invalide' });
+  const cached = store.getPointDetail(id);
+  if (cached) return res.json({ id, cached: true, ...cached });
+  try {
+    const detail = await fetchPointDetail({ keyword: config.yb.keyword, id });
+    if (!detail) return res.status(404).json({ error: 'Détail introuvable' });
+    store.setPointDetail(id, detail);
+    res.json({ id, cached: false, ...detail });
+  } catch (e) {
+    log.warn(`Fetch détail YB ${id} échec`, e.message);
+    res.status(502).json({ error: 'Yellow Brick injoignable' });
+  }
 });
 
 const stopYb = startYbPoller({

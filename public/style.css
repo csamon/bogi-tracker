@@ -1,7 +1,10 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-#map { position: absolute; inset: 0; }
 
+/* Conteneur Windy en plein écran */
+#windy { position: absolute; inset: 0; }
+
+/* Bandeau d'état Mapei en haut à gauche */
 #status {
   position: absolute; top: 12px; left: 12px; z-index: 1000;
   background: rgba(255, 255, 255, 0.92); padding: 10px 14px; border-radius: 8px;
@@ -14,24 +17,26 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 #status-alert { color: #b40000; font-weight: 600; margin-top: 6px; }
 #status-alert.hidden { display: none; }
 
+/* Contrôles en bas à gauche (Windy occupe le top-right avec son menu) */
 #controls {
-  position: absolute; top: 12px; right: 12px; z-index: 1000;
+  position: absolute; bottom: 12px; left: 12px; z-index: 1000;
   background: rgba(255, 255, 255, 0.92); padding: 10px 14px; border-radius: 8px;
   font-size: 13px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   display: flex; flex-direction: column; gap: 6px;
 }
 #controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-#controls select { font-size: 13px; padding: 2px 4px; }
 #controls button {
   font-size: 13px; padding: 4px 8px; cursor: pointer;
   background: #f5f5f5; border: 1px solid #ccc; border-radius: 4px;
 }
 #controls button:hover { background: #e8e8e8; }
 
+/* Marqueurs (icônes SVG inline) */
 .boat-marker {
-  width: 24px; height: 24px;
+  width: 28px; height: 28px;
   background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><polygon points='12,2 18,22 12,17 6,22' fill='%23d62828' stroke='white' stroke-width='1.5'/></svg>") center/contain no-repeat;
   transform-origin: center center;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
 }
 .ais-marker {
   width: 14px; height: 14px;
@@ -39,8 +44,13 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
   transform-origin: center center;
 }
 
-/* iframe Windy posée en overlay semi-transparent — purement visuel */
-#wind-frame {
-  position: absolute; inset: 0; border: 0; z-index: 500;
-  opacity: 0.55; pointer-events: none;
+/* Popup YB stylé */
+.yb-popup {
+  font-size: 13px; line-height: 1.5;
+  min-width: 200px;
 }
+.yb-popup .yb-time { font-weight: 600; margin-bottom: 4px; }
+.yb-popup .yb-row { display: flex; justify-content: space-between; gap: 12px; }
+.yb-popup .yb-row span:first-child { color: #666; }
+.yb-popup .yb-row span:last-child { font-weight: 500; }
+.yb-popup .yb-loading { color: #888; font-style: italic; }
