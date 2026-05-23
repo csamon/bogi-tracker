@@ -126,7 +126,6 @@
       const rows = loading ? `<div class="yb-loading">Chargement…</div>` : `
         <div class="yb-row"><span>Vitesse</span><span>${fmtNum(detail?.speed, 'kn')}</span></div>
         <div class="yb-row"><span>Cap</span><span>${fmtCourse(detail?.course)}</span></div>
-        <div class="yb-row"><span>Temp eau</span><span>${fmtNum(detail?.temp, '°C')}</span></div>
         <div class="yb-row"><span>Position</span><span>${fmtCoords(point.lat, point.lon)}</span></div>
       `;
       return `<div class="yb-popup"><div class="yb-time">${when}</div>${rows}</div>`;
@@ -320,15 +319,14 @@
           <div class="yb-time">${detail?.datetime || fmtDateFromAt(last.at)}</div>
           <div class="yb-row"><span>Vitesse</span><span>${speed}</span></div>
           <div class="yb-row"><span>Cap</span><span>${heading}</span></div>
-          <div class="yb-row"><span>Temp eau</span><span>${temp}</span></div>
           <div class="yb-row"><span>Position</span><span>${fmtCoords(last.lat, last.lon)}</span></div>
           <div class="yb-row"><span>—</span><span><i>${ageString(age)}</i></span></div>
         </div>
       `);
 
       document.getElementById('status-boat').innerHTML =
-        `<b>Mapei</b> — ${speed} • cap ${heading} • ${temp}<br/>` +
-        `<small>${ageString(age)} · ${track.length} pts</small>`;
+        `<b>Mapei</b> — ${speed} • cap ${heading}<br/>` +
+        `<small>${ageString(age)}</small>`;
       document.getElementById('status-alert').classList.toggle('hidden', age <= ALERT_AGE_MS);
 
       // Extrapolation depuis le dernier point connu
