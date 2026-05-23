@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Bogi Tracker — Allagrande Mapei</title>
-  <link rel="stylesheet" href="/style.css?v=6" />
+  <link rel="stylesheet" href="/style.css?v=7" />
 </head>
 <body>
   <!-- Conteneur Windy : la carte (Leaflet 1.4.0) + l'UI Windy s'y rendent -->
@@ -29,49 +29,56 @@
   <div id="help-modal" class="hidden">
     <div class="help-content">
       <button id="help-close" type="button" aria-label="Fermer">×</button>
-      <h2>Bogi Tracker — Guide</h2>
+      <h2>Bogi Tracker — Mode d'emploi</h2>
 
-      <h3>Trace Mapei (couleur = vitesse)</h3>
-      <p>Chaque segment entre deux points YB est coloré selon la vitesse moyenne :
-      bleu ≈ 0 kn → cyan → vert ≈ 17 kn → jaune → rouge ≥ 35 kn.
-      Les segments gris translucides attendent encore leur détail (enrichissement
-      en arrière-plan, quelques minutes après chaque boot serveur).</p>
+      <h3>À quoi ça sert ?</h3>
+      <p>Suivre Allagrande Mapei en temps réel pendant ses navigations,
+      voir la météo et les autres bateaux autour.</p>
 
-      <h3>Points YB cliquables</h3>
-      <p>Chaque point blanc sur la trace = une position envoyée par Yellow Brick
-      (~1 toutes les 15 min). Clic = popup avec date/heure, vitesse, cap, température
-      eau et coordonnées exactes. Toggleable depuis le menu.</p>
+      <h3>Le bateau et sa route</h3>
+      <p>La flèche rouge, c'est <b>Mapei</b>. Elle est orientée dans la direction où elle avance.
+      Sa trace est colorée selon sa vitesse :
+      <span style="color:#1d4ed8;font-weight:600">bleu = lent</span>,
+      <span style="color:#16a34a;font-weight:600">vert = moyen</span>,
+      <span style="color:#eab308;font-weight:600">jaune</span> et
+      <span style="color:#dc2626;font-weight:600">rouge = très rapide</span>
+      (jusqu'à 35 nœuds, environ 65 km/h).</p>
+      <p>Les petits ronds blancs sur la trace sont les positions enregistrées,
+      à peu près toutes les 15 minutes. <b>Clique sur un rond</b> pour voir
+      l'heure, la vitesse, le cap et la température de l'eau à ce moment-là.</p>
 
-      <h3>AIS (cibles + traces)</h3>
-      <p>Bateaux à 100 NM autour de Mapei, reçus via aisstream.io. Triangles
-      bleu-vert pour chaque cible. Une trace de la dernière heure est dessinée
-      si plusieurs positions sont reçues.</p>
-      <p><b>Le nombre de cibles varie naturellement</b> : Mapei avance vite (20+ kn),
-      le bbox 100 NM se déplace avec elle, des bateaux sortent du rayon et d'autres
-      entrent. La fenêtre est glissante (1h) : si un bateau n'émet plus pendant
-      1h il disparaît du tracker (mais il existe toujours, juste pas dans nos données).</p>
+      <h3>Le vent et la météo</h3>
+      <p>La météo affichée vient de Windy. En haut à droite, le bouton
+      <b>« Vent »</b> te laisse choisir ce que tu veux voir : vent, vagues,
+      température, pression… Le menu de Windy permet aussi de changer le fond
+      de carte (satellite, sombre, classique…).</p>
+      <p>En bas de l'écran, <b>la barre de temps</b> te permet de voir la météo
+      prévue à différentes heures. Fais-la glisser ou clique sur le bouton
+      <b>Play</b> pour voir l'évolution sur les prochains jours.</p>
 
-      <h3>Extrapolation +1h / +5h / +10h (rouge)</h3>
-      <p>Trois badges rouges à la position projetée en supposant cap et vitesse
-      constants depuis le dernier point YB. Pointillé rouge reliant la position
-      actuelle au +10h. Toggleable.</p>
+      <h3>Où sera Mapei dans 1h / 5h / 10h ?</h3>
+      <p>Les trois badges rouges <b>+1h, +5h, +10h</b> devant le bateau montrent
+      où il serait s'il continuait à la même vitesse et au même cap qu'actuellement.
+      C'est une estimation simple — en vrai, la météo, la tactique et les manœuvres
+      peuvent changer la trajectoire.</p>
+      <p>Le badge orange <b>@HH:MM</b> est lié à la barre de temps Windy :
+      quand tu fais glisser la barre pour voir la météo plus tard, ce badge se
+      déplace en même temps pour te montrer où Mapei serait à cette heure-là.
+      Très pratique pour visualiser le bateau dans le vent à venir.</p>
 
-      <h3>Curseur timeline Windy (orange)</h3>
-      <p>Quand tu fais glisser la barre de temps de Windy en bas de l'écran,
-      le badge orange « @HH:MM » suit en temps réel : il indique la position où
-      Mapei serait à cette heure-là (même hypothèse cap+vitesse constants),
-      pour visualiser le bateau dans la météo projetée. Toggleable avec
-      l'extrapolation.</p>
+      <h3>Les autres bateaux autour</h3>
+      <p>Les petits triangles bleu-vert sont les bateaux (cargos, voiliers, ferries…)
+      qui se trouvent dans un rayon d'environ <b>100 milles autour de Mapei</b>.
+      Clique sur un triangle pour voir le nom du bateau, sa vitesse et son cap.</p>
 
-      <h3>Vent et fond de carte</h3>
-      <p>Géré par Windy : bouton « Vent » en haut à droite pour changer l'overlay
-      (vent / temp / pression / vagues / etc), menu burger Windy pour basemap
-      satellite / standard / dark / etc. Tes préférences sont mémorisées par Windy.</p>
-
-      <h3>Auth et préférences</h3>
-      <p>Mot de passe partagé équipage, session conservée 30 jours via cookie.
-      Tes toggles UI (AIS, points, extrapolation) sont mémorisés par navigateur.
-      Pas de compte individuel.</p>
+      <h3>Le menu à gauche</h3>
+      <p>Tu peux cocher / décocher chaque catégorie pour épurer la carte
+      selon ce que tu veux voir :</p>
+      <p>• <b>AIS</b> : afficher ou cacher les autres bateaux et leurs traces.<br/>
+      • <b>Points YB cliquables</b> : afficher ou cacher les petits ronds historiques sur la trace de Mapei.<br/>
+      • <b>Extrapolation</b> : afficher ou cacher les prédictions (+1h, +5h, +10h, et le curseur orange).</p>
+      <p>Le bouton <b>« Recentrer sur Mapei »</b> ramène la carte sur le bateau
+      si tu as zoomé ou navigué ailleurs.</p>
     </div>
   </div>
 
@@ -83,6 +90,6 @@
   -->
   <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
   <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
-  <script src="/app.js?v=6"></script>
+  <script src="/app.js?v=7"></script>
 </body>
 </html>
