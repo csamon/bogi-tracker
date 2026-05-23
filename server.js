@@ -8,6 +8,7 @@ import { createPasswordAuth } from './lib/auth.js';
 import { createStore } from './lib/store.js';
 import { startYbPoller, startTrackEnricher, fetchPointDetail } from './lib/yb.js';
 import { startAisClient, distanceNm } from './lib/ais.js';
+import { startScraperTrigger } from './lib/scraper-trigger.js';
 
 const log = makeLogger('server');
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -133,6 +134,12 @@ const stopAis = startAisClient({
   store,
 });
 
+// Trigger AIS scrapers tiers : déclenché à chaque nouvelle position YB de Mapei,
+// délai aléatoire 30-120s pour éviter tout pattern régulier. Hors course = pas de scrape.
+const scrapers = [];
+// TODO: pousser ici les adaptateurs MT/ShipXplorer/etc. au fur et à mesure
+const stopScraperTrigger = startScraperTrigger({ store, scrapers });
+
 const server = app.listen(config.port, config.bind, () => {
   log.info(`bogi-tracker à l'écoute sur http://${config.bind}:${config.port}`);
 });
@@ -142,6 +149,7 @@ function shutdown(signal) {
   stopYb();
   stopEnricher();
   stopAis();
+  stopScraperTrigger();
   store.shutdown();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 5000).unref();
