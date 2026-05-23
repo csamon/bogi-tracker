@@ -4,18 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Bogi Tracker — Allagrande Mapei</title>
-  <link rel="stylesheet" href="/style.css?v=14" />
+  <link rel="stylesheet" href="/style.css?v=15" />
 </head>
 <body>
   <!-- Conteneur Windy : la carte (Leaflet 1.4.0) + l'UI Windy s'y rendent -->
   <div id="windy"></div>
 
-  <!-- Barre d'overlays Windy (limité à 3 par le plugin Map Forecast) -->
-  <div id="overlay-bar">
-    <button type="button" data-overlay="wind">Vent</button>
-    <button type="button" data-overlay="temp">Température</button>
-    <button type="button" data-overlay="pressure">Pression</button>
-  </div>
 
   <!-- Bandeau d'état Mapei (superposé) -->
   <div id="status">
@@ -77,6 +71,6 @@
   -->
   <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
   <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
-  <script src="/app.js?v=14"></script>
+  <script src="/app.js?v=15"></script>
 </body>
 </html>
