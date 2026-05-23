@@ -466,6 +466,27 @@
       if (boatMarker) map.setView(boatMarker.getLatLng(), 9);
     });
 
+    // === Barre d'overlays Windy étendus ===
+    const overlayBar = document.getElementById('overlay-bar');
+    const LS_OVERLAY = 'bogi.overlay';
+    function setOverlay(name) {
+      try {
+        windyAPI.store.set('overlay', name);
+        overlayBar.querySelectorAll('button').forEach(b => {
+          b.classList.toggle('active', b.dataset.overlay === name);
+        });
+        localStorage.setItem(LS_OVERLAY, name);
+      } catch (e) {
+        console.warn('overlay', name, 'unsupported:', e.message);
+      }
+    }
+    overlayBar.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-overlay]');
+      if (btn) setOverlay(btn.dataset.overlay);
+    });
+    // Restaure le choix précédent (ou wind par défaut)
+    setOverlay(localStorage.getItem(LS_OVERLAY) || 'wind');
+
     // Bulle d'aide
     const helpBtn = document.getElementById('help-btn');
     const helpModal = document.getElementById('help-modal');
