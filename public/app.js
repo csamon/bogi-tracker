@@ -181,7 +181,7 @@
         const icon = L.divIcon({
           className: '',
           html: `<div class="extrap-badge">+${h}h</div>`,
-          iconSize: [40, 22], iconAnchor: [20, 11],
+          iconSize: [28, 15], iconAnchor: [14, 7],
         });
         const m = L.marker([dest.lat, dest.lon], { icon, interactive: true }).addTo(map);
         m.bindPopup(`
