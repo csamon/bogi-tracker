@@ -9,7 +9,7 @@ Hébergé sur le Raspberry Pi Zero 2W `backup-db`, exposé via Cloudflare Tunnel
 - **Backend** : Node.js 20+, Express, `ws`, `dotenv`
 - **Frontend** : Leaflet 1.4.0 vanilla, pas de framework
 - **Persistance** : fichier JSON sur disque pour la trace bateau, mémoire seule pour l'AIS (fenêtre glissante 30 min)
-- **Auth** : Basic Auth applicatif (user `equipage`, mot de passe partagé)
+- **Auth** : page de login dédiée + cookie de session HttpOnly (mot de passe partagé, pas de user)
 
 ## Arborescence
 
@@ -21,14 +21,16 @@ bogi-tracker/
 ├── .gitignore
 ├── lib/
 │   ├── config.js          # chargement et validation .env
-│   ├── auth.js            # middleware Basic Auth (timing-safe)
+│   ├── auth.js            # auth mot de passe + cookie de session (timing-safe)
 │   ├── store.js           # état mémoire + persistance JSON atomique
 │   ├── yb.js              # poller Yellow Brick (10 min)
 │   ├── ais.js             # client WebSocket aisstream.io (bbox dynamique)
 │   └── logger.js          # logger console
 ├── data/                  # créé au runtime, gitignored (boat.json)
+├── views/
+│   ├── login.html         # page de login
+│   └── app.html           # page principale (carte Leaflet)
 ├── public/
-│   ├── index.html
 │   ├── app.js
 │   └── style.css
 └── systemd/
@@ -45,7 +47,7 @@ notepad .env   # remplir AISSTREAM_KEY et WINDY_KEY
 npm run dev    # node --watch server.js
 ```
 
-Puis ouvrir <http://127.0.0.1:3000>, user `equipage`, mot de passe = valeur définie dans `.env`.
+Puis ouvrir <http://127.0.0.1:3000>, saisir le mot de passe défini dans `.env`.
 
 ## Déploiement sur backup-db (Pi Zero 2W)
 
@@ -101,7 +103,10 @@ pm2 list                       # confirme que la liste est vide
 
 | Méthode | Route | Auth | Description |
 |---|---|---|---|
-| GET | `/` | ✓ | Page Leaflet |
+| GET | `/` | ✓ | Page Leaflet (redirige vers /login si non authentifié) |
+| GET | `/login` | — | Page de saisie du mot de passe |
+| POST | `/login` | — | Vérifie le mot de passe, pose le cookie de session |
+| POST | `/logout` | — | Efface le cookie |
 | GET | `/api/state` | ✓ | Snapshot complet (boat + AIS) |
 | GET | `/api/windy-key` | ✓ | Clé Windy (pour l'iframe) |
 | GET | `/healthz` | — | Statut serveur (lastBoatAt, ageMs) |
