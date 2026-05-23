@@ -4,25 +4,17 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Bogi Tracker — Allagrande Mapei</title>
-  <link rel="stylesheet" href="/style.css?v=13" />
+  <link rel="stylesheet" href="/style.css?v=14" />
 </head>
 <body>
   <!-- Conteneur Windy : la carte (Leaflet 1.4.0) + l'UI Windy s'y rendent -->
   <div id="windy"></div>
 
-  <!-- Barre d'overlays Windy étendus (au-delà des 3 du plugin natif) -->
+  <!-- Barre d'overlays Windy (limité à 3 par le plugin Map Forecast) -->
   <div id="overlay-bar">
     <button type="button" data-overlay="wind">Vent</button>
-    <button type="button" data-overlay="gust">Rafales</button>
-    <button type="button" data-overlay="rain">Pluie</button>
-    <button type="button" data-overlay="clouds">Nuages</button>
-    <button type="button" data-overlay="temp">Temp</button>
+    <button type="button" data-overlay="temp">Température</button>
     <button type="button" data-overlay="pressure">Pression</button>
-    <button type="button" data-overlay="waves">Vagues</button>
-    <button type="button" data-overlay="swell1">Houle</button>
-    <button type="button" data-overlay="currents">Courants</button>
-    <button type="button" data-overlay="cape">Orages</button>
-    <button type="button" data-overlay="visibility">Visibilité</button>
   </div>
 
   <!-- Bandeau d'état Mapei (superposé) -->
@@ -85,6 +77,6 @@
   -->
   <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
   <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
-  <script src="/app.js?v=13"></script>
+  <script src="/app.js?v=14"></script>
 </body>
 </html>
