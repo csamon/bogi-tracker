@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Bogi Tracker — Allagrande Mapei</title>
-  <link rel="stylesheet" href="/style.css?v=3" />
+  <link rel="stylesheet" href="/style.css?v=4" />
 </head>
 <body>
   <!-- Conteneur Windy : la carte (Leaflet 1.4.0) + l'UI Windy s'y rendent -->
@@ -20,6 +20,7 @@
   <div id="controls">
     <label><input type="checkbox" id="toggle-ais" checked /> AIS (cibles + traces)</label>
     <label><input type="checkbox" id="toggle-points" checked /> Points YB cliquables</label>
+    <label><input type="checkbox" id="toggle-extrap" checked /> Extrapolation (+1h / +5h / +10h)</label>
     <button id="center-boat" type="button">Recentrer sur Mapei</button>
   </div>
 
@@ -31,6 +32,6 @@
   -->
   <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
   <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
-  <script src="/app.js?v=3"></script>
+  <script src="/app.js?v=4"></script>
 </body>
 </html>

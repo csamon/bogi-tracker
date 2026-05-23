@@ -5,6 +5,9 @@
   const ALERT_AGE_MS = 45 * 60 * 1000;
   const LS_AIS = 'bogi.ais';
   const LS_POINTS = 'bogi.points';
+  const LS_EXTRAP = 'bogi.extrap';
+  // Heures d'extrapolation à projeter depuis la dernière position connue
+  const EXTRAP_HOURS = [1, 5, 10];
 
   // Échelle de vitesse pour la coloration des segments
   const SPEED_MIN_KN = 0;
@@ -12,6 +15,7 @@
 
   let showAis = localStorage.getItem(LS_AIS) !== '0';
   let showPoints = localStorage.getItem(LS_POINTS) !== '0';
+  let showExtrap = localStorage.getItem(LS_EXTRAP) !== '0';
 
   // Bootstrap : on récupère la clé Windy + un premier snapshot, puis on initialise Windy
   (async () => {
@@ -72,6 +76,21 @@
       });
     }
 
+    // === Destination grand-cercle (depuis lat/lon, cap°, distance NM) ===
+    function destinationPoint(lat, lon, courseDeg, distanceNm) {
+      const R = 3440.065; // rayon Terre en NM
+      const δ = distanceNm / R;
+      const θ = courseDeg * Math.PI / 180;
+      const φ1 = lat * Math.PI / 180;
+      const λ1 = lon * Math.PI / 180;
+      const φ2 = Math.asin(Math.sin(φ1) * Math.cos(δ) + Math.cos(φ1) * Math.sin(δ) * Math.cos(θ));
+      const λ2 = λ1 + Math.atan2(
+        Math.sin(θ) * Math.sin(δ) * Math.cos(φ1),
+        Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2)
+      );
+      return { lat: φ2 * 180 / Math.PI, lon: ((λ2 * 180 / Math.PI + 540) % 360) - 180 };
+    }
+
     // === Coloration vitesse : bleu (0 kn) -> rouge (35 kn) via cyan/vert/jaune ===
     function speedColor(speed) {
       if (speed == null || Number.isNaN(speed)) return '#808080';
@@ -116,6 +135,8 @@
     // === État des couches ===
     let boatMarker = null;
     let segments = [];                  // L.polyline par paire de points consécutifs
+    let extrapMarkers = [];             // markers +1h/+5h/+10h
+    let extrapLine = null;              // pointillé reliant la position au +10h
     const pointMarkers = new Map();     // id -> L.circleMarker
     const aisMarkers = new Map();       // mmsi -> L.marker
     const aisTracks = new Map();        // mmsi -> L.polyline
@@ -137,6 +158,47 @@
         cm.setPopupContent(pointPopupHtml(point, { datetime: '— erreur fetch —' }));
         console.error(e);
       }
+    }
+
+    // === Rendu de l'extrapolation +1h / +5h / +10h ===
+    function clearExtrap() {
+      for (const m of extrapMarkers) map.removeLayer(m);
+      extrapMarkers = [];
+      if (extrapLine) { map.removeLayer(extrapLine); extrapLine = null; }
+    }
+    function renderExtrap(last, detail) {
+      clearExtrap();
+      if (!showExtrap || !last || !detail) return;
+      const speed = detail.speed;
+      const course = detail.course;
+      if (speed == null || course == null || speed <= 0) return;
+
+      const linePts = [[last.lat, last.lon]];
+      EXTRAP_HOURS.forEach(h => {
+        const distNm = speed * h;
+        const dest = destinationPoint(last.lat, last.lon, course, distNm);
+        linePts.push([dest.lat, dest.lon]);
+        const icon = L.divIcon({
+          className: '',
+          html: `<div class="extrap-badge">+${h}h</div>`,
+          iconSize: [40, 22], iconAnchor: [20, 11],
+        });
+        const m = L.marker([dest.lat, dest.lon], { icon, interactive: true }).addTo(map);
+        m.bindPopup(`
+          <div class="yb-popup">
+            <div class="yb-time">Projection +${h}h</div>
+            <div class="yb-row"><span>Hypothèse</span><span>cap+vitesse constants</span></div>
+            <div class="yb-row"><span>Vitesse</span><span>${speed.toFixed(1)} kn</span></div>
+            <div class="yb-row"><span>Cap</span><span>${Math.round(course)}°</span></div>
+            <div class="yb-row"><span>Distance</span><span>${distNm.toFixed(0)} NM</span></div>
+            <div class="yb-row"><span>Position</span><span>${fmtCoords(dest.lat, dest.lon)}</span></div>
+          </div>
+        `);
+        extrapMarkers.push(m);
+      });
+      extrapLine = L.polyline(linePts, {
+        color: '#d62828', weight: 1.5, opacity: 0.7, dashArray: '6, 6',
+      }).addTo(map);
     }
 
     // === Rendu des segments colorés (vitesse) ===
@@ -214,6 +276,9 @@
         `<b>Mapei</b> — ${speed} • cap ${heading} • ${temp}<br/>` +
         `<small>${ageString(age)} · ${track.length} pts</small>`;
       document.getElementById('status-alert').classList.toggle('hidden', age <= ALERT_AGE_MS);
+
+      // Extrapolation depuis le dernier point connu
+      renderExtrap(last, detail);
     }
 
     function renderAis(ais, now) {
@@ -317,6 +382,15 @@
       } else {
         refresh();
       }
+    });
+
+    const extrapToggle = document.getElementById('toggle-extrap');
+    extrapToggle.checked = showExtrap;
+    extrapToggle.addEventListener('change', e => {
+      showExtrap = e.target.checked;
+      localStorage.setItem(LS_EXTRAP, showExtrap ? '1' : '0');
+      if (!showExtrap) clearExtrap();
+      else refresh();
     });
 
     document.getElementById('center-boat').addEventListener('click', () => {

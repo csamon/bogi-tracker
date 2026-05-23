@@ -45,6 +45,23 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
   transform-origin: center center;
 }
 
+/* Badge pour les marqueurs d'extrapolation +1h / +5h / +10h */
+.extrap-badge {
+  background: #d62828;
+  color: white;
+  border-radius: 11px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  border: 1.5px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  width: 40px;
+  height: 22px;
+  line-height: 16px;
+}
+
 /* Popup YB stylé */
 .yb-popup {
   font-size: 13px; line-height: 1.5;
