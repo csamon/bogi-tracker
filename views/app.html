@@ -24,7 +24,13 @@
     <button id="center-boat" type="button">Recentrer sur Mapei</button>
   </div>
 
-  <!-- Plugin Windy : expose `windyInit` et `L` (Leaflet 1.4.0) globalement -->
+  <!--
+    ORDRE DE CHARGEMENT CRITIQUE (Windy exige cet ordre exact) :
+    1. leaflet.js 1.4.0 obligatoire (ni plus, ni moins)
+    2. libBoot.js — Windy charge son propre CSS, donc PAS de leaflet.css
+    3. Notre app.js
+  -->
+  <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
   <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
   <script src="/app.js"></script>
 </body>
