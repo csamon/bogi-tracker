@@ -371,10 +371,14 @@
           const latlngs = v.track.map(p => [p.lat, p.lon]);
           let t = aisTracks.get(mmsi);
           if (!t) {
-            t = L.polyline(latlngs, { color: '#006d77', weight: 2, opacity: 0.6 }).addTo(map);
+            // Trace cyan vif avec halo blanc derrière pour contraster sur le fond vent
+            const halo = L.polyline(latlngs, { color: '#ffffff', weight: 5, opacity: 0.6 }).addTo(map);
+            const line = L.polyline(latlngs, { color: '#22d3ee', weight: 3, opacity: 0.95 }).addTo(map);
+            t = { halo, line };
             aisTracks.set(mmsi, t);
           } else {
-            t.setLatLngs(latlngs);
+            t.halo.setLatLngs(latlngs);
+            t.line.setLatLngs(latlngs);
           }
         }
       }
@@ -383,14 +387,17 @@
         if (!seen.has(mmsi)) { map.removeLayer(m); aisMarkers.delete(mmsi); }
       }
       for (const [mmsi, t] of aisTracks) {
-        if (!seen.has(mmsi)) { map.removeLayer(t); aisTracks.delete(mmsi); }
+        if (!seen.has(mmsi)) {
+          map.removeLayer(t.halo); map.removeLayer(t.line);
+          aisTracks.delete(mmsi);
+        }
       }
     }
 
     function clearAis() {
       for (const m of aisMarkers.values()) map.removeLayer(m);
       aisMarkers.clear();
-      for (const t of aisTracks.values()) map.removeLayer(t);
+      for (const t of aisTracks.values()) { map.removeLayer(t.halo); map.removeLayer(t.line); }
       aisTracks.clear();
     }
 
