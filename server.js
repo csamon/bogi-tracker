@@ -1,5 +1,6 @@
 // Point d'entrée : Express + auth mot de passe + montage des pollers
 import express from 'express';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './lib/config.js';
@@ -9,6 +10,7 @@ import { createStore } from './lib/store.js';
 import { startYbPoller, startTrackEnricher, fetchPointDetail } from './lib/yb.js';
 import { startAisClient, distanceNm } from './lib/ais.js';
 import { startScraperTrigger } from './lib/scraper-trigger.js';
+import { createMarineTrafficScraper } from './lib/ais-marinetraffic.js';
 
 const log = makeLogger('server');
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -136,8 +138,13 @@ const stopAis = startAisClient({
 
 // Trigger AIS scrapers tiers : déclenché à chaque nouvelle position YB de Mapei,
 // délai aléatoire 30-120s pour éviter tout pattern régulier. Hors course = pas de scrape.
-const scrapers = [];
-// TODO: pousser ici les adaptateurs MT/ShipXplorer/etc. au fur et à mesure
+// Les scrapers headless (Playwright/Chromium) ne sont actifs que si chromium est installé,
+// pour que les machines plus modestes (Pi Zero) ne tentent pas de lancer un browser absent.
+const HAS_CHROMIUM = (() => {
+  try { return fs.existsSync('/usr/bin/chromium'); } catch { return false; }
+})();
+const scrapers = HAS_CHROMIUM ? [createMarineTrafficScraper({ store })] : [];
+if (!HAS_CHROMIUM) log.info('Chromium absent, scrapers AIS headless désactivés');
 const stopScraperTrigger = startScraperTrigger({ store, scrapers });
 
 const server = app.listen(config.port, config.bind, () => {
