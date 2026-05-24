@@ -170,9 +170,11 @@
     let segments = [];                  // L.polyline par paire de points consécutifs
     let extrapMarkers = [];             // markers +1h/+5h/+10h
     let extrapLine = null;              // pointillé reliant la position au +10h
-    let timelineMarker = null;          // suit la timeline Windy (orange, position projetée)
+    let timelineMarker = null;          // suit la timeline Windy (orange, position projetée OU historique)
     let currentLast = null;             // dernière position connue (pour re-render au changement timestamp)
     let currentDetail = null;
+    let currentTrack = null;            // trace YB complète, pour le rewind dans le passé
+    let scrubbedToPast = false;         // si vrai, on a déplacé le boat marker à un point historique → renderBoat ne doit pas le re-snap au présent
     const pointMarkers = new Map();     // id -> L.circleMarker
     const aisMarkers = new Map();       // mmsi -> L.marker
     const aisTracks = new Map();        // mmsi -> L.polyline
@@ -206,45 +208,106 @@
       if (timelineMarker) { map.removeLayer(timelineMarker); timelineMarker = null; }
     }
 
-    // === Curseur dynamique synchronisé à la timeline Windy ===
-    // Quand l'utilisateur déplace le curseur temps de Windy, on projette la position de Mapei
-    // à ce timestamp en supposant cap+vitesse constants (cohérent avec les badges fixes).
-    function renderTimelineProjection(last, detail, timestamp) {
-      if (!showExtrap || !last || !detail || detail.speed == null || detail.course == null || detail.speed <= 0) {
-        clearTimelineMarker();
-        return;
+    // Trouve le point YB de la trace dont le timestamp est le plus proche d'une date donnée
+    function findClosestHistorical(track, timestamp) {
+      if (!track || !track.length) return null;
+      let best = track[0];
+      let bestDiff = Math.abs(best.at - timestamp);
+      for (const p of track) {
+        const d = Math.abs(p.at - timestamp);
+        if (d < bestDiff) { bestDiff = d; best = p; }
       }
-      const deltaH = (timestamp - last.at) / 3_600_000;
-      // Ne pas afficher si le curseur est sur le passé (avant le dernier point) ou trop proche du présent
-      if (deltaH < 0.25) {
-        clearTimelineMarker();
-        return;
-      }
-      const distNm = detail.speed * deltaH;
-      const dest = destinationPoint(last.lat, last.lon, detail.course, distNm);
-      const tStr = new Date(timestamp).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      return best;
+    }
+
+    function setBoatTo(lat, lon, course) {
+      if (!boatMarker) return;
+      boatMarker.setLatLng([lat, lon]);
+      boatMarker.setIcon(boatIcon(course || 0));
+    }
+
+    function updateTimelineBadge(lat, lon, html) {
+      const tStr = new Date(html.timestamp).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       const icon = L.divIcon({
         className: '',
         html: `<div class="timeline-badge">@${tStr}</div>`,
         iconSize: [44, 15], iconAnchor: [22, 7],
       });
       if (!timelineMarker) {
-        timelineMarker = L.marker([dest.lat, dest.lon], { icon }).addTo(map);
+        timelineMarker = L.marker([lat, lon], { icon }).addTo(map);
       } else {
-        timelineMarker.setLatLng([dest.lat, dest.lon]);
+        timelineMarker.setLatLng([lat, lon]);
         timelineMarker.setIcon(icon);
       }
-      timelineMarker.bindPopup(`
-        <div class="yb-popup">
-          <div class="yb-time">Projection @ ${new Date(timestamp).toLocaleString('fr-FR')}</div>
-          <div class="yb-row"><span>Delta</span><span>+${deltaH.toFixed(1)} h</span></div>
-          <div class="yb-row"><span>Hypothèse</span><span>cap+vitesse constants</span></div>
-          <div class="yb-row"><span>Vitesse</span><span>${detail.speed.toFixed(1)} kn</span></div>
-          <div class="yb-row"><span>Cap</span><span>${Math.round(detail.course)}°</span></div>
-          <div class="yb-row"><span>Distance</span><span>${distNm.toFixed(0)} NM</span></div>
-          <div class="yb-row"><span>Position</span><span>${fmtCoords(dest.lat, dest.lon)}</span></div>
-        </div>
-      `);
+      timelineMarker.bindPopup(html.popup);
+    }
+
+    // === Curseur dynamique synchronisé à la timeline Windy ===
+    // Trois modes selon la position du curseur Windy par rapport au dernier point YB connu :
+    //   • futur (> +15 min) : projection cap+vitesse constants (extrapolation)
+    //   • présent (±15 min) : bateau à sa position actuelle, pas de badge
+    //   • passé (< −15 min) : rewind du bateau au point YB historique le plus proche
+    function renderTimelineProjection(last, detail, timestamp) {
+      if (!showExtrap || !last) {
+        scrubbedToPast = false;
+        clearTimelineMarker();
+        if (last) setBoatTo(last.lat, last.lon, detail?.course);
+        return;
+      }
+      const deltaMs = timestamp - last.at;
+      const PRESENT_TOL_MS = 15 * 60_000;
+
+      // === Mode PASSÉ : on recule le bateau au point YB historique le plus proche ===
+      if (deltaMs < -PRESENT_TOL_MS) {
+        const hist = findClosestHistorical(currentTrack, timestamp);
+        if (!hist) { clearTimelineMarker(); return; }
+        const histDetail = detailCache.get(hist.id);
+        scrubbedToPast = true;
+        setBoatTo(hist.lat, hist.lon, histDetail?.course);
+        const histAgeMin = Math.round((Date.now() - hist.at) / 60_000);
+        const popup = `
+          <div class="yb-popup">
+            <div class="yb-time">Mapei @ ${new Date(hist.at).toLocaleString('fr-FR')}</div>
+            <div class="yb-row"><span>Delta</span><span>−${(Math.abs(deltaMs) / 3_600_000).toFixed(1)} h</span></div>
+            <div class="yb-row"><span>Type</span><span>relevé YB historique</span></div>
+            <div class="yb-row"><span>Vitesse</span><span>${histDetail?.speed != null ? histDetail.speed.toFixed(1) + ' kn' : '—'}</span></div>
+            <div class="yb-row"><span>Cap</span><span>${histDetail?.course != null ? Math.round(histDetail.course) + '°' : '—'}</span></div>
+            <div class="yb-row"><span>Position</span><span>${fmtCoords(hist.lat, hist.lon)}</span></div>
+            <div class="yb-row"><span>Âge</span><span>il y a ${histAgeMin} min</span></div>
+          </div>`;
+        updateTimelineBadge(hist.lat, hist.lon, { timestamp: hist.at, popup });
+        return;
+      }
+
+      // Reset : on n'est plus en mode passé, on remet le bateau au présent
+      scrubbedToPast = false;
+      setBoatTo(last.lat, last.lon, detail?.course);
+
+      // === Mode FUTUR : extrapolation cap+vitesse constants ===
+      if (deltaMs > PRESENT_TOL_MS) {
+        if (!detail || detail.speed == null || detail.course == null || detail.speed <= 0) {
+          clearTimelineMarker();
+          return;
+        }
+        const deltaH = deltaMs / 3_600_000;
+        const distNm = detail.speed * deltaH;
+        const dest = destinationPoint(last.lat, last.lon, detail.course, distNm);
+        const popup = `
+          <div class="yb-popup">
+            <div class="yb-time">Projection @ ${new Date(timestamp).toLocaleString('fr-FR')}</div>
+            <div class="yb-row"><span>Delta</span><span>+${deltaH.toFixed(1)} h</span></div>
+            <div class="yb-row"><span>Hypothèse</span><span>cap+vitesse constants</span></div>
+            <div class="yb-row"><span>Vitesse</span><span>${detail.speed.toFixed(1)} kn</span></div>
+            <div class="yb-row"><span>Cap</span><span>${Math.round(detail.course)}°</span></div>
+            <div class="yb-row"><span>Distance</span><span>${distNm.toFixed(0)} NM</span></div>
+            <div class="yb-row"><span>Position</span><span>${fmtCoords(dest.lat, dest.lon)}</span></div>
+          </div>`;
+        updateTimelineBadge(dest.lat, dest.lon, { timestamp, popup });
+        return;
+      }
+
+      // === Mode PRÉSENT : pas de badge, bateau au présent (déjà fait au-dessus) ===
+      clearTimelineMarker();
     }
 
     // Abonnement à la timeline Windy (une seule fois)
@@ -318,11 +381,14 @@
         document.getElementById('status-boat').textContent = '— en attente de position —';
         return;
       }
+      currentTrack = track; // référence pour le rewind timeline
 
       const course = detail?.course ?? 0;
       if (!boatMarker) {
         boatMarker = L.marker([last.lat, last.lon], { icon: boatIcon(course), zIndexOffset: 1000 }).addTo(map);
-      } else {
+      } else if (!scrubbedToPast) {
+        // Si l'utilisateur a scrubbed la timeline Windy dans le passé, on ne touche pas au boat marker
+        // (sinon il sauterait au présent à chaque refresh 15s)
         boatMarker.setLatLng([last.lat, last.lon]);
         boatMarker.setIcon(boatIcon(course));
       }
