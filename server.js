@@ -13,6 +13,7 @@ import { startScraperTrigger } from './lib/scraper-trigger.js';
 import { createMarineTrafficScraper } from './lib/ais-marinetraffic.js';
 import { startWindBackfill } from './lib/wind-backfill.js';
 import { buildPolar } from './lib/polar.js';
+import { computeRoute } from './lib/routing.js';
 
 const log = makeLogger('server');
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -86,9 +87,41 @@ app.get('/api/track-details', auth.requireAuth, (req, res) => {
 });
 
 // Polaire de vitesse Mapei : agrégée à partir des points YB enrichis (boat + wind)
-// Utile pour visualiser le profil de performance + (à venir) routing tactique.
 app.get('/api/polar', auth.requireAuth, (req, res) => {
   res.json(buildPolar(store));
+});
+
+// Routing prévisionnel : route 10h calculée avec polaire + forecast Open-Meteo, TWA constant.
+// Recalculé en arrière-plan à chaque nouveau point YB. Cache servi en attendant.
+let cachedRoute = null;
+let cachedRouteFor = null;
+let routeComputeInFlight = false;
+async function refreshRoute() {
+  if (routeComputeInFlight) return;
+  const last = store.lastBoatPosition();
+  if (!last) return;
+  if (last.id === cachedRouteFor) return;
+  routeComputeInFlight = true;
+  try {
+    const route = await computeRoute({ store, totalHours: 10, stepMin: 10 });
+    if (route) {
+      cachedRoute = route;
+      cachedRouteFor = last.id;
+      log.info(`Route recalculée : ${route.points.length} pts sur 10h, TWA=${Math.round(route.initialTwa)}°, TWS=${route.initialWind.speed.toFixed(1)} kn`);
+    }
+  } catch (e) {
+    log.warn(`Route compute échec : ${e.message}`);
+  } finally {
+    routeComputeInFlight = false;
+  }
+}
+store.events.on('newBoatPosition', refreshRoute);
+// Bootstrap : compute initial si on a déjà une position
+setTimeout(refreshRoute, 3000);
+
+app.get('/api/route', auth.requireAuth, (req, res) => {
+  if (!cachedRoute) return res.status(503).json({ error: 'Route pas encore calculée' });
+  res.json(cachedRoute);
 });
 
 // Endpoint de diag : tous les AIS reçus sans filtre, avec distance à Mapei

@@ -6,7 +6,6 @@
   const LS_AIS = 'bogi.ais';
   const LS_POINTS = 'bogi.points';
   const LS_EXTRAP = 'bogi.extrap';
-  const LS_POLAR = 'bogi.polar';
   // Heures d'extrapolation à projeter depuis la dernière position connue
   const EXTRAP_HOURS = [1, 5, 10];
 
@@ -17,7 +16,9 @@
   let showAis = localStorage.getItem(LS_AIS) !== '0';
   let showPoints = localStorage.getItem(LS_POINTS) !== '0';
   let showExtrap = localStorage.getItem(LS_EXTRAP) !== '0';
-  let showPolar = localStorage.getItem(LS_POLAR) === '1';
+  // Mode projection : par défaut "polar" (routing avec polaire + Windy forecast).
+  // Pour revenir au mode classique cap+vitesse constants : localStorage.setItem('bogi.projection','classic')
+  const projectionMode = localStorage.getItem('bogi.projection') || 'polar';
 
   // Bootstrap : on récupère la clé Windy + un premier snapshot, puis on initialise Windy
   (async () => {
@@ -177,6 +178,7 @@
     let currentDetail = null;
     let currentTrack = null;            // trace YB complète, pour le rewind dans le passé
     let scrubbedToPast = false;         // si vrai, on a déplacé le boat marker à un point historique → renderBoat ne doit pas le re-snap au présent
+    let currentRoute = null;            // route prévisionnelle polaire+Windy (10h, pas 10min) — null si mode classic ou pas encore calculée
     const pointMarkers = new Map();     // id -> L.circleMarker
     const aisMarkers = new Map();       // mmsi -> L.marker
     const aisTracks = new Map();        // mmsi -> L.polyline
@@ -285,13 +287,36 @@
       scrubbedToPast = false;
       setBoatTo(last.lat, last.lon, detail?.course);
 
-      // === Mode FUTUR : extrapolation cap+vitesse constants ===
+      // === Mode FUTUR : projection ===
       if (deltaMs > PRESENT_TOL_MS) {
+        const deltaH = deltaMs / 3_600_000;
+
+        // Mode polaire (par défaut) : on lit la route précalculée
+        if (projectionMode === 'polar' && currentRoute?.points?.length > 1) {
+          const p = routePointAt(currentRoute, timestamp);
+          if (p) {
+            const popup = `
+              <div class="yb-popup">
+                <div class="yb-time">Projection @ ${new Date(timestamp).toLocaleString('fr-FR')}</div>
+                <div class="yb-row"><span>Delta</span><span>+${deltaH.toFixed(1)} h</span></div>
+                <div class="yb-row"><span>Source</span><span>polaire + Windy</span></div>
+                <div class="yb-row"><span>TWA</span><span>${Math.round(p.twa)}°</span></div>
+                <div class="yb-row"><span>TWS prévu</span><span>${p.tws.toFixed(1)} kn</span></div>
+                <div class="yb-row"><span>Vitesse estimée</span><span>${p.speed.toFixed(1)} kn</span></div>
+                <div class="yb-row"><span>Cap calculé</span><span>${Math.round(p.course)}°</span></div>
+                <div class="yb-row"><span>Position</span><span>${fmtCoords(p.lat, p.lon)}</span></div>
+              </div>`;
+            updateTimelineBadge(p.lat, p.lon, { timestamp, popup });
+            return;
+          }
+          // Si la route s'arrête avant le timestamp demandé (au-delà 10h), on tombe en mode classique
+        }
+
+        // Mode classique (fallback) : cap+vitesse constants
         if (!detail || detail.speed == null || detail.course == null || detail.speed <= 0) {
           clearTimelineMarker();
           return;
         }
-        const deltaH = deltaMs / 3_600_000;
         const distNm = detail.speed * deltaH;
         const dest = destinationPoint(last.lat, last.lon, detail.course, distNm);
         const popup = `
@@ -318,6 +343,18 @@
     } catch (e) {
       console.warn('Windy timestamp subscription failed', e);
     }
+    // Renvoie le point route le plus proche d'un timestamp cible
+    function routePointAt(route, targetT) {
+      if (!route?.points?.length) return null;
+      let best = route.points[0];
+      let bestDiff = Math.abs(best.at - targetT);
+      for (const p of route.points) {
+        const d = Math.abs(p.at - targetT);
+        if (d < bestDiff) { bestDiff = d; best = p; }
+      }
+      return best;
+    }
+
     function renderExtrap(last, detail) {
       clearExtrap();
       if (!showExtrap || !last || !detail) return;
@@ -325,6 +362,42 @@
       const course = detail.course;
       if (speed == null || course == null || speed <= 0) return;
 
+      // Mode polaire (par défaut) : on lit la route précalculée côté serveur si dispo
+      if (projectionMode === 'polar' && currentRoute?.points?.length > 1) {
+        // Polyline = TOUTE la route (courbée selon les changements de vent prévus)
+        const linePts = currentRoute.points.map(p => [p.lat, p.lon]);
+        extrapLine = L.polyline(linePts, {
+          color: '#d62828', weight: 1.5, opacity: 0.7, dashArray: '6, 6',
+        }).addTo(map);
+
+        // Badges +1h, +5h, +10h aux points route correspondants
+        EXTRAP_HOURS.forEach(h => {
+          const targetT = last.at + h * 3_600_000;
+          const p = routePointAt(currentRoute, targetT);
+          if (!p) return;
+          const icon = L.divIcon({
+            className: '',
+            html: `<div class="extrap-badge">+${h}h</div>`,
+            iconSize: [28, 15], iconAnchor: [14, 7],
+          });
+          const m = L.marker([p.lat, p.lon], { icon, interactive: true }).addTo(map);
+          m.bindPopup(`
+            <div class="yb-popup">
+              <div class="yb-time">Projection +${h}h (polaire + Windy)</div>
+              <div class="yb-row"><span>TWA</span><span>${Math.round(p.twa)}°</span></div>
+              <div class="yb-row"><span>TWS prévu</span><span>${p.tws.toFixed(1)} kn</span></div>
+              <div class="yb-row"><span>Vitesse estimée</span><span>${p.speed.toFixed(1)} kn</span></div>
+              <div class="yb-row"><span>Cap calculé</span><span>${Math.round(p.course)}°</span></div>
+              <div class="yb-row"><span>Position</span><span>${fmtCoords(p.lat, p.lon)}</span></div>
+              <div class="yb-row"><span>Note</span><span><i>indicatif</i></span></div>
+            </div>
+          `);
+          extrapMarkers.push(m);
+        });
+        return;
+      }
+
+      // Mode classique (fallback) : cap+vitesse constants
       const linePts = [[last.lat, last.lon]];
       EXTRAP_HOURS.forEach(h => {
         const distNm = speed * h;
@@ -514,13 +587,15 @@
     async function refresh() {
       let s, d;
       try {
-        const [rState, rDetails] = await Promise.all([
+        const [rState, rDetails, rRoute] = await Promise.all([
           fetch('/api/state'),
           fetch('/api/track-details'),
+          projectionMode === 'polar' ? fetch('/api/route').then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
         ]);
         if (!rState.ok) throw new Error('HTTP state ' + rState.status);
         s = await rState.json();
         d = rDetails.ok ? (await rDetails.json()).details : {};
+        currentRoute = rRoute;
         refreshFailures = 0;
       } catch (e) {
         refreshFailures++;
@@ -528,78 +603,10 @@
           `⚠ Serveur injoignable (${refreshFailures} essais)`;
         return;
       }
-      // Met à jour le cache de détails (l'enricher en a peut-être chargé de nouveaux)
       for (const [k, v] of Object.entries(d)) detailCache.set(Number(k), v);
       renderBoat(s.boat, s.now);
       renderAis(s.ais, s.now);
-      if (showPolar) renderPolar();
     }
-
-    // === Polaire Mapei (canvas) ===
-    const polarPanel = document.getElementById('polar-panel');
-    const polarCanvas = document.getElementById('polar-canvas');
-    const polarStatsEl = document.getElementById('polar-stats');
-    async function renderPolar() {
-      try {
-        const r = await fetch('/api/polar');
-        if (!r.ok) return;
-        const data = await r.json();
-        drawPolar(polarCanvas, data);
-        polarStatsEl.textContent = `${data.stats.usedPoints} pts · ${data.stats.binCount} bins`;
-      } catch (e) { console.warn('polar fetch', e); }
-    }
-    function drawPolar(canvas, data) {
-      const ctx = canvas.getContext('2d');
-      const W = canvas.width, H = canvas.height;
-      const cx = W / 2, cy = H / 2;
-      const Rmax = Math.min(cx, cy) - 22;
-      const TWS_MAX = data.bins.twsMax;
-      ctx.clearRect(0, 0, W, H);
-      // Cercles TWS (5, 10, 15, 20, 25, 30 kn)
-      ctx.strokeStyle = '#d8d8d8'; ctx.lineWidth = 1;
-      ctx.fillStyle = '#888'; ctx.font = '9px sans-serif'; ctx.textAlign = 'left';
-      for (let tws = 5; tws <= 30; tws += 5) {
-        const r = (tws / TWS_MAX) * Rmax;
-        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-        ctx.fillText(tws + ' kn', cx + 2, cy - r - 2);
-      }
-      // Lignes radiales tous les 30°
-      ctx.strokeStyle = '#e8e8e8';
-      for (let a = 0; a < 360; a += 30) {
-        const rad = a * Math.PI / 180;
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + Math.sin(rad) * Rmax, cy - Math.cos(rad) * Rmax);
-        ctx.stroke();
-      }
-      // Labels TWA cardinaux
-      ctx.fillStyle = '#444'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText('0° (face au vent)', cx, 12);
-      ctx.fillText('180° (vent arrière)', cx, H - 4);
-      ctx.textAlign = 'right'; ctx.fillText('−90°', cx - Rmax - 4, cy + 4);
-      ctx.textAlign = 'left'; ctx.fillText('+90°', cx + Rmax + 4, cy + 4);
-      // Points : couleur Turbo selon boatSpeed, taille selon count
-      for (const b of data.polar) {
-        const r = Math.min(1, b.tws / TWS_MAX) * Rmax;
-        const rad = b.twa * Math.PI / 180;
-        const x = cx + Math.sin(rad) * r;
-        const y = cy - Math.cos(rad) * r;
-        const dotR = Math.min(7, 2.5 + Math.log2(b.count + 1));
-        ctx.beginPath(); ctx.arc(x, y, dotR, 0, Math.PI * 2);
-        ctx.fillStyle = speedColor(b.boatSpeed); ctx.fill();
-        ctx.lineWidth = 0.6; ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.stroke();
-      }
-    }
-    const polarToggle = document.getElementById('toggle-polar');
-    polarToggle.checked = showPolar;
-    polarPanel.classList.toggle('hidden', !showPolar);
-    polarToggle.addEventListener('change', e => {
-      showPolar = e.target.checked;
-      localStorage.setItem(LS_POLAR, showPolar ? '1' : '0');
-      polarPanel.classList.toggle('hidden', !showPolar);
-      if (showPolar) renderPolar();
-    });
-    if (showPolar) renderPolar();
 
     // === Contrôles UI ===
     const aisToggle = document.getElementById('toggle-ais');

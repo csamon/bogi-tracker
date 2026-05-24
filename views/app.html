@@ -6,20 +6,11 @@
   <title>Bogi Tracker — Allagrande Mapei</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="apple-touch-icon" href="/favicon.svg" />
-  <link rel="stylesheet" href="/style.css?v=22" />
+  <link rel="stylesheet" href="/style.css?v=23" />
 </head>
 <body>
   <!-- Conteneur Windy : la carte (Leaflet 1.4.0) + l'UI Windy s'y rendent -->
   <div id="windy"></div>
-
-  <!-- Panneau polaire Mapei (toggle depuis le menu) -->
-  <div id="polar-panel" class="hidden">
-    <div class="polar-header">
-      <span>Polaire Mapei <em>(approx, indicatif)</em></span>
-      <span id="polar-stats"></span>
-    </div>
-    <canvas id="polar-canvas" width="300" height="300"></canvas>
-  </div>
 
 
   <!-- Bandeau d'état Mapei (superposé) -->
@@ -35,7 +26,6 @@
       <label><input type="checkbox" id="toggle-ais" checked /> AIS (cibles + traces)</label>
       <label><input type="checkbox" id="toggle-points" checked /> Points YB cliquables</label>
       <label><input type="checkbox" id="toggle-extrap" checked /> Extrapolation (+1h / +5h / +10h)</label>
-      <label><input type="checkbox" id="toggle-polar" /> Polaire Mapei</label>
       <button id="center-boat" type="button">Recentrer sur Bogi</button>
       <button id="help-btn" type="button">? Aide</button>
     </div>
@@ -86,6 +76,6 @@
   -->
   <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
   <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
-  <script src="/app.js?v=22"></script>
+  <script src="/app.js?v=23"></script>
 </body>
 </html>
