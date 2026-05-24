@@ -122,15 +122,19 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 .yb-popup .yb-row span:last-child { font-weight: 500; }
 .yb-popup .yb-loading { color: #888; font-style: italic; }
 
-/* === Toggle pliage du panneau contrôles (visible uniquement en mobile) === */
+/* === Toggle pliage du panneau contrôles (visible partout, desktop et mobile) === */
 #controls-toggle {
-  display: none;
+  display: block;
   background: transparent; border: 0;
   cursor: pointer; padding: 2px 0;
-  font-size: 12px; font-weight: 600; color: #2563eb;
+  font-size: 13px; font-weight: 600; color: #2563eb;
   text-align: left; line-height: 1.2;
 }
-#controls-body { display: flex; flex-direction: column; gap: 6px; }
+#controls-toggle:hover { color: #1e40af; }
+#controls-body { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+/* Replié : on cache le contenu, on ne garde que le toggle */
+#controls.collapsed #controls-body { display: none; }
+#controls.collapsed { padding-top: 6px; padding-bottom: 6px; }
 
 /* === Mode mobile compact === */
 @media (max-width: 768px) {

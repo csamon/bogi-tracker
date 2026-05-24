@@ -488,14 +488,11 @@
       if (boatMarker) map.setView(boatMarker.getLatLng(), 9);
     });
 
-    // Toggle pliage des contrôles (utile principalement en mobile)
+    // Toggle pliage des contrôles (desktop ET mobile). Panel toujours replié par défaut.
     const controlsEl = document.getElementById('controls');
     const controlsToggle = document.getElementById('controls-toggle');
     controlsToggle.addEventListener('click', () => controlsEl.classList.toggle('collapsed'));
-    // Sur mobile (≤ 768 px), le panel démarre replié pour libérer l'écran
-    if (window.matchMedia('(max-width: 768px)').matches) {
-      controlsEl.classList.add('collapsed');
-    }
+    controlsEl.classList.add('collapsed');
 
     // Bulle d'aide
     const helpBtn = document.getElementById('help-btn');
