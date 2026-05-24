@@ -391,7 +391,12 @@
 
       // ====== Route polaire + Windy (bleu, TWA constant, courbée) ======
       if (currentRoute?.points?.length > 1) {
-        const routePts = currentRoute.points.map(p => [p.lat, p.lon]);
+        // Translation : on ancre visuellement la route au boat marker actuel pour gommer
+        // le léger lag de cache (cas où Mapei a émis un nouveau point YB depuis le compute)
+        const start = currentRoute.points[0];
+        const dLat = last.lat - start.lat;
+        const dLon = last.lon - start.lon;
+        const routePts = currentRoute.points.map(p => [p.lat + dLat, p.lon + dLon]);
         extrapPolarLine = L.polyline(routePts, {
           color: '#2563eb', weight: 2, opacity: 0.85, dashArray: '4, 6',
         }).addTo(map);
@@ -400,12 +405,14 @@
           const targetT = last.at + h * 3_600_000;
           const p = routePointAt(currentRoute, targetT);
           if (!p) return;
+          const badgeLat = p.lat + dLat;
+          const badgeLon = p.lon + dLon;
           const icon = L.divIcon({
             className: '',
             html: `<div class="extrap-badge extrap-polar">${h}h</div>`,
             iconSize: [24, 15], iconAnchor: [12, 7],
           });
-          const m = L.marker([p.lat, p.lon], { icon, interactive: true }).addTo(map);
+          const m = L.marker([badgeLat, badgeLon], { icon, interactive: true }).addTo(map);
           m.bindPopup(`
             <div class="yb-popup">
               <div class="yb-time">Projection +${h}h — routage TWA constant</div>
@@ -414,7 +421,7 @@
               <div class="yb-row"><span>TWS prévu</span><span>${p.tws.toFixed(1)} kn</span></div>
               <div class="yb-row"><span>Vitesse estimée</span><span>${p.speed.toFixed(1)} kn</span></div>
               <div class="yb-row"><span>Cap calculé</span><span>${Math.round(p.course)}°</span></div>
-              <div class="yb-row"><span>Position</span><span>${fmtCoords(p.lat, p.lon)}</span></div>
+              <div class="yb-row"><span>Position</span><span>${fmtCoords(badgeLat, badgeLon)}</span></div>
               <div class="yb-row"><span>Note</span><span><i>indicatif</i></span></div>
             </div>
           `);

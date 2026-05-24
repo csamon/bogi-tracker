@@ -92,12 +92,18 @@ app.get('/api/polar', auth.requireAuth, (req, res) => {
 });
 
 // Routing prévisionnel : route 10h calculée avec polaire + forecast Open-Meteo, TWA constant.
-// Recalculé en arrière-plan à chaque nouveau point YB. Cache servi en attendant.
+// Recalculé en arrière-plan à chaque nouveau point YB. Si un compute est en cours quand un
+// nouveau YB arrive, on queue un autre compute (chain), pour que la route soit TOUJOURS basée
+// sur le dernier YB connu une fois le compute en cours terminé.
 let cachedRoute = null;
 let cachedRouteFor = null;
 let routeComputeInFlight = false;
+let routeRecomputePending = false;
 async function refreshRoute() {
-  if (routeComputeInFlight) return;
+  if (routeComputeInFlight) {
+    routeRecomputePending = true;
+    return;
+  }
   const last = store.lastBoatPosition();
   if (!last) return;
   if (last.id === cachedRouteFor) return;
@@ -113,10 +119,14 @@ async function refreshRoute() {
     log.warn(`Route compute échec : ${e.message}`);
   } finally {
     routeComputeInFlight = false;
+    // Si un newBoatPosition est arrivé pendant le compute, on enchaîne
+    if (routeRecomputePending) {
+      routeRecomputePending = false;
+      setImmediate(refreshRoute);
+    }
   }
 }
 store.events.on('newBoatPosition', refreshRoute);
-// Bootstrap : compute initial si on a déjà une position
 setTimeout(refreshRoute, 3000);
 
 app.get('/api/route', auth.requireAuth, (req, res) => {
