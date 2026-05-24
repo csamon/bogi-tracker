@@ -389,15 +389,21 @@
         }
         // Couleur du dernier report selon âge : vert (frais) → orange → rouge (vieux)
         const ageColor = ageMs > 30 * 60_000 ? '#b40000' : ageMs > 10 * 60_000 ? '#d97706' : '#16a34a';
+        // Source et libellé d'identifiant adaptés
+        const isMT = v.source === 'marinetraffic' || String(mmsi).startsWith('mt_');
+        const sourceLabel = isMT ? 'MarineTraffic' : (v.source === 'aisstream' ? 'aisstream.io' : '—');
+        const idLabel = isMT ? 'ID MT' : 'MMSI';
+        const idValue = isMT ? String(mmsi).replace(/^mt_/, '') : mmsi;
         m.bindPopup(`
           <div class="yb-popup">
-            <div class="yb-time">${v.name || 'MMSI ' + mmsi}</div>
+            <div class="yb-time">${v.name || (isMT ? 'Sans nom' : 'MMSI ' + mmsi)}</div>
             <div class="yb-row"><span>Dernier report</span><span style="color:${ageColor};font-weight:600">${ageString(ageMs)}</span></div>
             ${v.callsign ? `<div class="yb-row"><span>Indicatif</span><span>${v.callsign}</span></div>` : ''}
-            <div class="yb-row"><span>MMSI</span><span>${mmsi}</span></div>
+            <div class="yb-row"><span>${idLabel}</span><span>${idValue}</span></div>
             <div class="yb-row"><span>Vitesse</span><span>${fmtNum(last.speed, 'kn')}</span></div>
             <div class="yb-row"><span>Cap</span><span>${fmtCourse(last.course)}</span></div>
             <div class="yb-row"><span>Position</span><span>${fmtCoords(last.lat, last.lon)}</span></div>
+            <div class="yb-row"><span>Source</span><span>${sourceLabel}</span></div>
           </div>
         `);
 
