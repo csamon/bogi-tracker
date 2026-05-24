@@ -268,13 +268,21 @@
         scrubbedToPast = true;
         setBoatTo(hist.lat, hist.lon, histDetail?.course);
         const histAgeMin = Math.round((Date.now() - hist.at) / 60_000);
+        // TWA/TWS dispo si le backfill Open-Meteo a enrichi ce point
+        const w = histDetail?.wind;
+        const haveWind = w && !w.unavailable && w.speed != null && w.direction != null && histDetail?.course != null;
+        const twa = haveWind ? ((w.direction - histDetail.course + 540) % 360) - 180 : null;
         const popup = `
           <div class="yb-popup">
             <div class="yb-time">Mapei @ ${new Date(hist.at).toLocaleString('fr-FR')}</div>
             <div class="yb-row"><span>Delta</span><span>−${(Math.abs(deltaMs) / 3_600_000).toFixed(1)} h</span></div>
             <div class="yb-row"><span>Type</span><span>relevé YB historique</span></div>
-            <div class="yb-row"><span>Vitesse</span><span>${histDetail?.speed != null ? histDetail.speed.toFixed(1) + ' kn' : '—'}</span></div>
+            <div class="yb-row"><span>BSP</span><span>${histDetail?.speed != null ? histDetail.speed.toFixed(1) + ' kn' : '—'}</span></div>
             <div class="yb-row"><span>Cap</span><span>${histDetail?.course != null ? Math.round(histDetail.course) + '°' : '—'}</span></div>
+            ${haveWind ? `
+              <div class="yb-row"><span>TWA</span><span>${Math.round(twa)}°</span></div>
+              <div class="yb-row"><span>TWS</span><span>${w.speed.toFixed(1)} kn</span></div>
+            ` : ''}
             <div class="yb-row"><span>Position</span><span>${fmtCoords(hist.lat, hist.lon)}</span></div>
             <div class="yb-row"><span>Âge</span><span>il y a ${histAgeMin} min</span></div>
           </div>`;
@@ -294,18 +302,24 @@
         if (currentRoute?.points?.length > 1) {
           const p = routePointAt(currentRoute, timestamp);
           if (p) {
+            // Translation visuelle cohérente avec la polyline (cf. renderExtrap)
+            const start = currentRoute.points[0];
+            const dLat = (currentLast?.lat ?? start.lat) - start.lat;
+            const dLon = (currentLast?.lon ?? start.lon) - start.lon;
+            const pLat = p.lat + dLat;
+            const pLon = p.lon + dLon;
             const popup = `
               <div class="yb-popup">
                 <div class="yb-time">Projection @ ${new Date(timestamp).toLocaleString('fr-FR')}</div>
                 <div class="yb-row"><span>Delta</span><span>+${deltaH.toFixed(1)} h</span></div>
-                <div class="yb-row"><span>Source</span><span>polaire + Windy</span></div>
+                <div class="yb-row"><span>Source</span><span>polaire + Windy (ECMWF)</span></div>
                 <div class="yb-row"><span>TWA</span><span>${Math.round(p.twa)}°</span></div>
-                <div class="yb-row"><span>TWS prévu</span><span>${p.tws.toFixed(1)} kn</span></div>
-                <div class="yb-row"><span>Vitesse estimée</span><span>${p.speed.toFixed(1)} kn</span></div>
-                <div class="yb-row"><span>Cap calculé</span><span>${Math.round(p.course)}°</span></div>
-                <div class="yb-row"><span>Position</span><span>${fmtCoords(p.lat, p.lon)}</span></div>
+                <div class="yb-row"><span>TWS</span><span>${p.tws.toFixed(1)} kn</span></div>
+                <div class="yb-row"><span>BSP</span><span>${p.speed.toFixed(1)} kn</span></div>
+                <div class="yb-row"><span>Cap</span><span>${Math.round(p.course)}°</span></div>
+                <div class="yb-row"><span>Position</span><span>${fmtCoords(pLat, pLon)}</span></div>
               </div>`;
-            updateTimelineBadge(p.lat, p.lon, { timestamp, popup });
+            updateTimelineBadge(pLat, pLon, { timestamp, popup });
             return;
           }
           // Si la route s'arrête avant le timestamp demandé (au-delà 10h), on tombe en mode classique
