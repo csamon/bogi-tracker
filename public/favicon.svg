@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Fond bleu nuit Allagrande -->
+  <rect width="32" height="32" rx="6" fill="#0d2438"/>
+  <!-- Trace cyan→vert qui monte de bas-gauche vers centre -->
+  <path d="M 5 27 Q 11 21, 16 15" stroke="#22d3ee" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- Marker triangle rouge (le bateau) au bout de la trace -->
+  <polygon points="16,4 22,26 16,20 10,26" fill="#d62828" stroke="white" stroke-width="1.2"/>
+</svg>

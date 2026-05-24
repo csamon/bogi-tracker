@@ -12,6 +12,7 @@ import { startAisClient, distanceNm } from './lib/ais.js';
 import { startScraperTrigger } from './lib/scraper-trigger.js';
 import { createMarineTrafficScraper } from './lib/ais-marinetraffic.js';
 import { startWindBackfill } from './lib/wind-backfill.js';
+import { buildPolar } from './lib/polar.js';
 
 const log = makeLogger('server');
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -78,10 +79,16 @@ app.get('/api/state', auth.requireAuth, (req, res) => {
   res.json(snap);
 });
 
-// Détails de tous les points YB connus : { id: {speed, course, temp, datetime, altitude} }
+// Détails de tous les points YB connus : { id: {speed, course, temp, datetime, altitude, wind?} }
 // Utilisé par le client pour colorer les segments selon la vitesse
 app.get('/api/track-details', auth.requireAuth, (req, res) => {
   res.json({ details: store.getAllPointDetails() });
+});
+
+// Polaire de vitesse Mapei : agrégée à partir des points YB enrichis (boat + wind)
+// Utile pour visualiser le profil de performance + (à venir) routing tactique.
+app.get('/api/polar', auth.requireAuth, (req, res) => {
+  res.json(buildPolar(store));
 });
 
 // Endpoint de diag : tous les AIS reçus sans filtre, avec distance à Mapei
