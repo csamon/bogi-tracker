@@ -6,6 +6,7 @@
   const LS_AIS = 'bogi.ais';
   const LS_POINTS = 'bogi.points';
   const LS_EXTRAP = 'bogi.extrap';
+  const LS_POLAR = 'bogi.polar';
   // Heures d'extrapolation à projeter depuis la dernière position connue
   const EXTRAP_HOURS = [1, 5, 10];
 
@@ -16,6 +17,7 @@
   let showAis = localStorage.getItem(LS_AIS) !== '0';
   let showPoints = localStorage.getItem(LS_POINTS) !== '0';
   let showExtrap = localStorage.getItem(LS_EXTRAP) !== '0';
+  let showPolar = localStorage.getItem(LS_POLAR) === '1';
 
   // Bootstrap : on récupère la clé Windy + un premier snapshot, puis on initialise Windy
   (async () => {
@@ -530,7 +532,74 @@
       for (const [k, v] of Object.entries(d)) detailCache.set(Number(k), v);
       renderBoat(s.boat, s.now);
       renderAis(s.ais, s.now);
+      if (showPolar) renderPolar();
     }
+
+    // === Polaire Mapei (canvas) ===
+    const polarPanel = document.getElementById('polar-panel');
+    const polarCanvas = document.getElementById('polar-canvas');
+    const polarStatsEl = document.getElementById('polar-stats');
+    async function renderPolar() {
+      try {
+        const r = await fetch('/api/polar');
+        if (!r.ok) return;
+        const data = await r.json();
+        drawPolar(polarCanvas, data);
+        polarStatsEl.textContent = `${data.stats.usedPoints} pts · ${data.stats.binCount} bins`;
+      } catch (e) { console.warn('polar fetch', e); }
+    }
+    function drawPolar(canvas, data) {
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      const cx = W / 2, cy = H / 2;
+      const Rmax = Math.min(cx, cy) - 22;
+      const TWS_MAX = data.bins.twsMax;
+      ctx.clearRect(0, 0, W, H);
+      // Cercles TWS (5, 10, 15, 20, 25, 30 kn)
+      ctx.strokeStyle = '#d8d8d8'; ctx.lineWidth = 1;
+      ctx.fillStyle = '#888'; ctx.font = '9px sans-serif'; ctx.textAlign = 'left';
+      for (let tws = 5; tws <= 30; tws += 5) {
+        const r = (tws / TWS_MAX) * Rmax;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillText(tws + ' kn', cx + 2, cy - r - 2);
+      }
+      // Lignes radiales tous les 30°
+      ctx.strokeStyle = '#e8e8e8';
+      for (let a = 0; a < 360; a += 30) {
+        const rad = a * Math.PI / 180;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.sin(rad) * Rmax, cy - Math.cos(rad) * Rmax);
+        ctx.stroke();
+      }
+      // Labels TWA cardinaux
+      ctx.fillStyle = '#444'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('0° (face au vent)', cx, 12);
+      ctx.fillText('180° (vent arrière)', cx, H - 4);
+      ctx.textAlign = 'right'; ctx.fillText('−90°', cx - Rmax - 4, cy + 4);
+      ctx.textAlign = 'left'; ctx.fillText('+90°', cx + Rmax + 4, cy + 4);
+      // Points : couleur Turbo selon boatSpeed, taille selon count
+      for (const b of data.polar) {
+        const r = Math.min(1, b.tws / TWS_MAX) * Rmax;
+        const rad = b.twa * Math.PI / 180;
+        const x = cx + Math.sin(rad) * r;
+        const y = cy - Math.cos(rad) * r;
+        const dotR = Math.min(7, 2.5 + Math.log2(b.count + 1));
+        ctx.beginPath(); ctx.arc(x, y, dotR, 0, Math.PI * 2);
+        ctx.fillStyle = speedColor(b.boatSpeed); ctx.fill();
+        ctx.lineWidth = 0.6; ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.stroke();
+      }
+    }
+    const polarToggle = document.getElementById('toggle-polar');
+    polarToggle.checked = showPolar;
+    polarPanel.classList.toggle('hidden', !showPolar);
+    polarToggle.addEventListener('change', e => {
+      showPolar = e.target.checked;
+      localStorage.setItem(LS_POLAR, showPolar ? '1' : '0');
+      polarPanel.classList.toggle('hidden', !showPolar);
+      if (showPolar) renderPolar();
+    });
+    if (showPolar) renderPolar();
 
     // === Contrôles UI ===
     const aisToggle = document.getElementById('toggle-ais');
