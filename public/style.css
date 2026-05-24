@@ -45,9 +45,8 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
   transform-origin: center center;
 }
 
-/* Badge pour les marqueurs d'extrapolation +1h / +5h / +10h */
+/* Badges projection +1h/+5h/+10h. Deux variantes : ligne droite (rouge) et polaire (bleu) */
 .extrap-badge {
-  background: #d62828;
   color: white;
   border-radius: 8px;
   padding: 1px 5px;
@@ -57,10 +56,11 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
   border: 1px solid white;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   white-space: nowrap;
-  width: 28px;
   height: 15px;
   line-height: 13px;
 }
+.extrap-badge.extrap-straight { background: #d62828; width: 28px; }
+.extrap-badge.extrap-polar { background: #2563eb; width: 24px; }
 
 /* Bouton et modal d'aide */
 #help-btn {

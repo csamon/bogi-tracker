@@ -16,9 +16,6 @@
   let showAis = localStorage.getItem(LS_AIS) !== '0';
   let showPoints = localStorage.getItem(LS_POINTS) !== '0';
   let showExtrap = localStorage.getItem(LS_EXTRAP) !== '0';
-  // Mode projection : par défaut "polar" (routing avec polaire + Windy forecast).
-  // Pour revenir au mode classique cap+vitesse constants : localStorage.setItem('bogi.projection','classic')
-  const projectionMode = localStorage.getItem('bogi.projection') || 'polar';
 
   // Bootstrap : on récupère la clé Windy + un premier snapshot, puis on initialise Windy
   (async () => {
@@ -203,10 +200,12 @@
     }
 
     // === Rendu de l'extrapolation +1h / +5h / +10h ===
+    let extrapPolarLine = null;        // route polaire (courbée, bleue)
     function clearExtrap() {
       for (const m of extrapMarkers) map.removeLayer(m);
       extrapMarkers = [];
       if (extrapLine) { map.removeLayer(extrapLine); extrapLine = null; }
+      if (extrapPolarLine) { map.removeLayer(extrapPolarLine); extrapPolarLine = null; }
     }
     function clearTimelineMarker() {
       if (timelineMarker) { map.removeLayer(timelineMarker); timelineMarker = null; }
@@ -291,8 +290,8 @@
       if (deltaMs > PRESENT_TOL_MS) {
         const deltaH = deltaMs / 3_600_000;
 
-        // Mode polaire (par défaut) : on lit la route précalculée
-        if (projectionMode === 'polar' && currentRoute?.points?.length > 1) {
+        // On préfère la route polaire si dispo (plus précise car suit le vent prévu)
+        if (currentRoute?.points?.length > 1) {
           const p = routePointAt(currentRoute, timestamp);
           if (p) {
             const popup = `
@@ -362,28 +361,55 @@
       const course = detail.course;
       if (speed == null || course == null || speed <= 0) return;
 
-      // Mode polaire (par défaut) : on lit la route précalculée côté serveur si dispo
-      if (projectionMode === 'polar' && currentRoute?.points?.length > 1) {
-        // Polyline = TOUTE la route (courbée selon les changements de vent prévus)
-        const linePts = currentRoute.points.map(p => [p.lat, p.lon]);
-        extrapLine = L.polyline(linePts, {
-          color: '#d62828', weight: 1.5, opacity: 0.7, dashArray: '6, 6',
+      // ====== Ligne droite cap+vitesse constants (rouge dashed, classique) ======
+      const straightPts = [[last.lat, last.lon]];
+      EXTRAP_HOURS.forEach(h => {
+        const distNm = speed * h;
+        const dest = destinationPoint(last.lat, last.lon, course, distNm);
+        straightPts.push([dest.lat, dest.lon]);
+        const icon = L.divIcon({
+          className: '',
+          html: `<div class="extrap-badge extrap-straight">+${h}h</div>`,
+          iconSize: [28, 15], iconAnchor: [14, 7],
+        });
+        const m = L.marker([dest.lat, dest.lon], { icon, interactive: true }).addTo(map);
+        m.bindPopup(`
+          <div class="yb-popup">
+            <div class="yb-time">Projection +${h}h — ligne droite</div>
+            <div class="yb-row"><span>Hypothèse</span><span>cap+vitesse constants</span></div>
+            <div class="yb-row"><span>Vitesse</span><span>${speed.toFixed(1)} kn</span></div>
+            <div class="yb-row"><span>Cap</span><span>${Math.round(course)}°</span></div>
+            <div class="yb-row"><span>Distance</span><span>${distNm.toFixed(0)} NM</span></div>
+            <div class="yb-row"><span>Position</span><span>${fmtCoords(dest.lat, dest.lon)}</span></div>
+          </div>
+        `);
+        extrapMarkers.push(m);
+      });
+      extrapLine = L.polyline(straightPts, {
+        color: '#d62828', weight: 1.5, opacity: 0.7, dashArray: '6, 6',
+      }).addTo(map);
+
+      // ====== Route polaire + Windy (bleu, TWA constant, courbée) ======
+      if (currentRoute?.points?.length > 1) {
+        const routePts = currentRoute.points.map(p => [p.lat, p.lon]);
+        extrapPolarLine = L.polyline(routePts, {
+          color: '#2563eb', weight: 2, opacity: 0.85, dashArray: '4, 6',
         }).addTo(map);
 
-        // Badges +1h, +5h, +10h aux points route correspondants
         EXTRAP_HOURS.forEach(h => {
           const targetT = last.at + h * 3_600_000;
           const p = routePointAt(currentRoute, targetT);
           if (!p) return;
           const icon = L.divIcon({
             className: '',
-            html: `<div class="extrap-badge">+${h}h</div>`,
-            iconSize: [28, 15], iconAnchor: [14, 7],
+            html: `<div class="extrap-badge extrap-polar">${h}h</div>`,
+            iconSize: [24, 15], iconAnchor: [12, 7],
           });
           const m = L.marker([p.lat, p.lon], { icon, interactive: true }).addTo(map);
           m.bindPopup(`
             <div class="yb-popup">
-              <div class="yb-time">Projection +${h}h (polaire + Windy)</div>
+              <div class="yb-time">Projection +${h}h — routage TWA constant</div>
+              <div class="yb-row"><span>Hypothèse</span><span>polaire + Windy forecast</span></div>
               <div class="yb-row"><span>TWA</span><span>${Math.round(p.twa)}°</span></div>
               <div class="yb-row"><span>TWS prévu</span><span>${p.tws.toFixed(1)} kn</span></div>
               <div class="yb-row"><span>Vitesse estimée</span><span>${p.speed.toFixed(1)} kn</span></div>
@@ -394,36 +420,7 @@
           `);
           extrapMarkers.push(m);
         });
-        return;
       }
-
-      // Mode classique (fallback) : cap+vitesse constants
-      const linePts = [[last.lat, last.lon]];
-      EXTRAP_HOURS.forEach(h => {
-        const distNm = speed * h;
-        const dest = destinationPoint(last.lat, last.lon, course, distNm);
-        linePts.push([dest.lat, dest.lon]);
-        const icon = L.divIcon({
-          className: '',
-          html: `<div class="extrap-badge">+${h}h</div>`,
-          iconSize: [28, 15], iconAnchor: [14, 7],
-        });
-        const m = L.marker([dest.lat, dest.lon], { icon, interactive: true }).addTo(map);
-        m.bindPopup(`
-          <div class="yb-popup">
-            <div class="yb-time">Projection +${h}h</div>
-            <div class="yb-row"><span>Hypothèse</span><span>cap+vitesse constants</span></div>
-            <div class="yb-row"><span>Vitesse</span><span>${speed.toFixed(1)} kn</span></div>
-            <div class="yb-row"><span>Cap</span><span>${Math.round(course)}°</span></div>
-            <div class="yb-row"><span>Distance</span><span>${distNm.toFixed(0)} NM</span></div>
-            <div class="yb-row"><span>Position</span><span>${fmtCoords(dest.lat, dest.lon)}</span></div>
-          </div>
-        `);
-        extrapMarkers.push(m);
-      });
-      extrapLine = L.polyline(linePts, {
-        color: '#d62828', weight: 1.5, opacity: 0.7, dashArray: '6, 6',
-      }).addTo(map);
     }
 
     // === Rendu des segments colorés (vitesse) ===
@@ -590,7 +587,7 @@
         const [rState, rDetails, rRoute] = await Promise.all([
           fetch('/api/state'),
           fetch('/api/track-details'),
-          projectionMode === 'polar' ? fetch('/api/route').then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
+          fetch('/api/route').then(r => r.ok ? r.json() : null).catch(() => null),
         ]);
         if (!rState.ok) throw new Error('HTTP state ' + rState.status);
         s = await rState.json();
