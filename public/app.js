@@ -68,10 +68,19 @@
         iconSize: [28, 28], iconAnchor: [14, 14],
       });
     }
-    function aisIcon(course) {
+    // Opacité décroissante selon âge du dernier report : indication visuelle de fraîcheur
+    function ageOpacity(ageMs) {
+      if (ageMs == null) return 1;
+      if (ageMs > 30 * 60_000) return 0.3;
+      if (ageMs > 10 * 60_000) return 0.55;
+      if (ageMs > 5 * 60_000) return 0.8;
+      return 1;
+    }
+    function aisIcon(course, ageMs) {
+      const op = ageOpacity(ageMs);
       return L.divIcon({
         className: '',
-        html: `<div class="ais-marker" style="transform: rotate(${course || 0}deg);"></div>`,
+        html: `<div class="ais-marker" style="transform: rotate(${course || 0}deg); opacity: ${op};"></div>`,
         iconSize: [14, 14], iconAnchor: [7, 7],
       });
     }
@@ -369,23 +378,26 @@
         seen.add(mmsi);
         const last = v.track.at(-1);
         if (!last) continue;
+        const ageMs = now - last.at;
         let m = aisMarkers.get(mmsi);
         if (!m) {
-          m = L.marker([last.lat, last.lon], { icon: aisIcon(last.course) }).addTo(map);
+          m = L.marker([last.lat, last.lon], { icon: aisIcon(last.course, ageMs) }).addTo(map);
           aisMarkers.set(mmsi, m);
         } else {
           m.setLatLng([last.lat, last.lon]);
-          m.setIcon(aisIcon(last.course));
+          m.setIcon(aisIcon(last.course, ageMs));
         }
+        // Couleur du dernier report selon âge : vert (frais) → orange → rouge (vieux)
+        const ageColor = ageMs > 30 * 60_000 ? '#b40000' : ageMs > 10 * 60_000 ? '#d97706' : '#16a34a';
         m.bindPopup(`
           <div class="yb-popup">
             <div class="yb-time">${v.name || 'MMSI ' + mmsi}</div>
+            <div class="yb-row"><span>Dernier report</span><span style="color:${ageColor};font-weight:600">${ageString(ageMs)}</span></div>
             ${v.callsign ? `<div class="yb-row"><span>Indicatif</span><span>${v.callsign}</span></div>` : ''}
             <div class="yb-row"><span>MMSI</span><span>${mmsi}</span></div>
             <div class="yb-row"><span>Vitesse</span><span>${fmtNum(last.speed, 'kn')}</span></div>
             <div class="yb-row"><span>Cap</span><span>${fmtCourse(last.course)}</span></div>
             <div class="yb-row"><span>Position</span><span>${fmtCoords(last.lat, last.lon)}</span></div>
-            <div class="yb-row"><span>—</span><span><i>${ageString(now - last.at)}</i></span></div>
           </div>
         `);
 
