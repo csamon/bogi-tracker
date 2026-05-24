@@ -11,6 +11,7 @@ import { startYbPoller, startTrackEnricher, fetchPointDetail } from './lib/yb.js
 import { startAisClient, distanceNm } from './lib/ais.js';
 import { startScraperTrigger } from './lib/scraper-trigger.js';
 import { createMarineTrafficScraper } from './lib/ais-marinetraffic.js';
+import { startWindBackfill } from './lib/wind-backfill.js';
 
 const log = makeLogger('server');
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -130,6 +131,10 @@ const stopEnricher = startTrackEnricher({
   store,
 });
 
+// Backfill météo : à chaque point YB on associe TWS/TWD historiques via Open-Meteo
+// (utilisé ensuite pour construire la polaire Mapei : lib/polar.js)
+const stopWindBackfill = startWindBackfill({ store });
+
 const stopAis = startAisClient({
   key: config.ais.key,
   radiusNm: config.ais.radiusNm,
@@ -155,6 +160,7 @@ function shutdown(signal) {
   log.info(`Reçu ${signal}, arrêt propre…`);
   stopYb();
   stopEnricher();
+  stopWindBackfill();
   stopAis();
   stopScraperTrigger();
   store.shutdown();
