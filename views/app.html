@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Bogi Tracker — Allagrande Mapei</title>
-  <link rel="stylesheet" href="/style.css?v=16" />
+  <link rel="stylesheet" href="/style.css?v=17" />
 </head>
 <body>
   <!-- Conteneur Windy : la carte (Leaflet 1.4.0) + l'UI Windy s'y rendent -->
@@ -17,13 +17,16 @@
     <div id="status-alert" class="hidden">⚠ Dernier point &gt; 45 min</div>
   </div>
 
-  <!-- Contrôles (superposés) -->
+  <!-- Contrôles (superposés). Sur mobile, panel pliable via le bouton-toggle. -->
   <div id="controls">
-    <label><input type="checkbox" id="toggle-ais" checked /> AIS (cibles + traces)</label>
-    <label><input type="checkbox" id="toggle-points" checked /> Points YB cliquables</label>
-    <label><input type="checkbox" id="toggle-extrap" checked /> Extrapolation (+1h / +5h / +10h)</label>
-    <button id="center-boat" type="button">Recentrer sur Bogi</button>
-    <button id="help-btn" type="button">? Aide</button>
+    <button id="controls-toggle" type="button" aria-label="Menu">≡ Menu</button>
+    <div id="controls-body">
+      <label><input type="checkbox" id="toggle-ais" checked /> AIS (cibles + traces)</label>
+      <label><input type="checkbox" id="toggle-points" checked /> Points YB cliquables</label>
+      <label><input type="checkbox" id="toggle-extrap" checked /> Extrapolation (+1h / +5h / +10h)</label>
+      <button id="center-boat" type="button">Recentrer sur Bogi</button>
+      <button id="help-btn" type="button">? Aide</button>
+    </div>
   </div>
 
   <!-- Modal d'aide (caché par défaut) -->
@@ -71,6 +74,6 @@
   -->
   <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
   <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
-  <script src="/app.js?v=16"></script>
+  <script src="/app.js?v=17"></script>
 </body>
 </html>

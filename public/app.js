@@ -337,7 +337,6 @@
       // Popup marker bateau
       const speed = fmtNum(detail?.speed, 'kn');
       const heading = fmtCourse(detail?.course);
-      const temp = fmtNum(detail?.temp, '°C');
       const age = now - last.at;
       boatMarker.bindPopup(`
         <div class="yb-popup">
@@ -488,6 +487,15 @@
     document.getElementById('center-boat').addEventListener('click', () => {
       if (boatMarker) map.setView(boatMarker.getLatLng(), 9);
     });
+
+    // Toggle pliage des contrôles (utile principalement en mobile)
+    const controlsEl = document.getElementById('controls');
+    const controlsToggle = document.getElementById('controls-toggle');
+    controlsToggle.addEventListener('click', () => controlsEl.classList.toggle('collapsed'));
+    // Sur mobile (≤ 768 px), le panel démarre replié pour libérer l'écran
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      controlsEl.classList.add('collapsed');
+    }
 
     // Bulle d'aide
     const helpBtn = document.getElementById('help-btn');
