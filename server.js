@@ -32,6 +32,46 @@ const app = express();
 app.disable('x-powered-by');
 app.set('etag', false);
 
+// Headers de sécurité appliqués à TOUTES les réponses.
+// On reste minimaliste pour ne pas casser Windy/Leaflet : juste anti-clickjacking,
+// anti-MIME-sniff, no-referrer, HSTS (Cloudflare fait toujours du HTTPS), perms-policy.
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  next();
+});
+
+// Rate limit /login : max 10 essais par IP par 15 min puis 429. Stockage in-memory,
+// nettoyé en arrière-plan. Bypass impossible derrière Cloudflare car on lit CF-Connecting-IP
+// (entrant uniquement via le tunnel sur loopback, pas spoofable de l'extérieur).
+const loginAttempts = new Map();
+const LOGIN_MAX = 10;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+function loginRateLimit(req, res, next) {
+  const ip = (req.headers['cf-connecting-ip']
+    || (req.headers['x-forwarded-for'] || '').split(',')[0]
+    || req.ip
+    || '').trim();
+  const now = Date.now();
+  let rec = loginAttempts.get(ip);
+  if (!rec || rec.resetAt < now) rec = { count: 0, resetAt: now + LOGIN_WINDOW_MS };
+  rec.count++;
+  loginAttempts.set(ip, rec);
+  if (rec.count > LOGIN_MAX) {
+    const retry = Math.ceil((rec.resetAt - now) / 1000);
+    res.setHeader('Retry-After', String(retry));
+    return res.status(429).send(`Trop de tentatives. Réessaie dans ${Math.ceil(retry / 60)} min.`);
+  }
+  return next();
+}
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, rec] of loginAttempts) if (rec.resetAt < now) loginAttempts.delete(ip);
+}, 60_000).unref();
+
 // Healthz : pas d'auth
 app.get('/healthz', (req, res) => {
   const last = store.lastBoatPosition();
@@ -44,7 +84,7 @@ app.get('/healthz', (req, res) => {
 
 // Login : page et soumission, sans auth
 app.get('/login', auth.loginGet(viewsDir));
-app.post('/login', express.urlencoded({ extended: false }), auth.loginPost);
+app.post('/login', loginRateLimit, express.urlencoded({ extended: false }), auth.loginPost);
 app.post('/logout', auth.logout);
 
 // Page principale (authentifiée)
