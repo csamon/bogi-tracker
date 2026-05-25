@@ -17,19 +17,24 @@
   let showPoints = localStorage.getItem(LS_POINTS) !== '0';
   let showExtrap = localStorage.getItem(LS_EXTRAP) !== '0';
 
-  // Bootstrap : on récupère la clé Windy + un premier snapshot, puis on initialise Windy
+  // Bootstrap : on récupère la clé Windy + un premier snapshot + la route polaire, puis on initialise Windy.
+  // /api/route est ajouté ici (et pas seulement dans le refresh tick à T+15s) pour que la projection
+  // bleue soit dessinée dès l'ouverture de la session. Le serveur garde la route en cache après
+  // le premier compute (recalculée à chaque nouveau YB), donc cet appel renvoie typiquement en <50ms.
   (async () => {
-    let key, initialState, initialDetails;
+    let key, initialState, initialDetails, initialRoute;
     try {
-      const [r1, r2, r3] = await Promise.all([
+      const [r1, r2, r3, r4] = await Promise.all([
         fetch('/api/windy-key'),
         fetch('/api/state'),
         fetch('/api/track-details'),
+        fetch('/api/route').then(r => r.ok ? r.json() : null).catch(() => null),
       ]);
       if (!r1.ok || !r2.ok) throw new Error('boot fetch a échoué');
       key = (await r1.json()).key;
       initialState = await r2.json();
       initialDetails = r3.ok ? (await r3.json()).details : {};
+      initialRoute = r4;
     } catch (e) {
       document.getElementById('status-boat').textContent = '⚠ Erreur de chargement initial';
       console.error(e);
@@ -53,10 +58,10 @@
       lat,
       lon,
       zoom: 7,
-    }, (windyAPI) => bootMap(windyAPI, initialState, initialDetails));
+    }, (windyAPI) => bootMap(windyAPI, initialState, initialDetails, initialRoute));
   })();
 
-  function bootMap(windyAPI, initialState, initialDetails) {
+  function bootMap(windyAPI, initialState, initialDetails, initialRoute) {
     const map = windyAPI.map;
     try { windyAPI.store.set('overlay', 'wind'); } catch (e) { console.warn('overlay set failed', e); }
 
@@ -175,7 +180,9 @@
     let currentDetail = null;
     let currentTrack = null;            // trace YB complète, pour le rewind dans le passé
     let scrubbedToPast = false;         // si vrai, on a déplacé le boat marker à un point historique → renderBoat ne doit pas le re-snap au présent
-    let currentRoute = null;            // route prévisionnelle polaire+Windy (10h, pas 10min) — null si mode classic ou pas encore calculée
+    // route prévisionnelle polaire+Windy (10h, pas 10min) — préchargée au bootstrap pour éviter
+    // le délai de 15s du premier tick refresh. null = mode classic ou pas encore calculée serveur.
+    let currentRoute = initialRoute || null;
     const pointMarkers = new Map();     // id -> L.circleMarker
     const aisMarkers = new Map();       // mmsi -> L.marker
     const aisTracks = new Map();        // mmsi -> L.polyline
