@@ -48,7 +48,7 @@ app.use((req, res, next) => {
 // nettoyé en arrière-plan. Bypass impossible derrière Cloudflare car on lit CF-Connecting-IP
 // (entrant uniquement via le tunnel sur loopback, pas spoofable de l'extérieur).
 const loginAttempts = new Map();
-const LOGIN_MAX = 10;
+const LOGIN_MAX = 3;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 function loginRateLimit(req, res, next) {
   const ip = (req.headers['cf-connecting-ip']
