@@ -268,23 +268,25 @@
         scrubbedToPast = true;
         setBoatTo(hist.lat, hist.lon, histDetail?.course);
         const histAgeMin = Math.round((Date.now() - hist.at) / 60_000);
-        // TWA/TWS dispo si le backfill Open-Meteo a enrichi ce point
+        // TWA/TWS/TWD dispo si le backfill Open-Meteo (archive ERA5) a enrichi ce point
         const w = histDetail?.wind;
         const haveWind = w && !w.unavailable && w.speed != null && w.direction != null && histDetail?.course != null;
         const twa = haveWind ? ((w.direction - histDetail.course + 540) % 360) - 180 : null;
+        const utcStr = new Date(hist.at).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
         const popup = `
           <div class="yb-popup">
-            <div class="yb-time">Mapei @ ${new Date(hist.at).toLocaleString('fr-FR')}</div>
+            <div class="yb-time">Mapei (relevé YB historique)</div>
+            <div class="yb-row"><span>Heure UTC</span><span>${utcStr}</span></div>
             <div class="yb-row"><span>Delta</span><span>−${(Math.abs(deltaMs) / 3_600_000).toFixed(1)} h</span></div>
-            <div class="yb-row"><span>Type</span><span>relevé YB historique</span></div>
-            <div class="yb-row"><span>BSP</span><span>${histDetail?.speed != null ? histDetail.speed.toFixed(1) + ' kn' : '—'}</span></div>
-            <div class="yb-row"><span>Cap</span><span>${histDetail?.course != null ? Math.round(histDetail.course) + '°' : '—'}</span></div>
+            <div class="yb-row"><span>Âge réel</span><span>il y a ${histAgeMin} min</span></div>
             ${haveWind ? `
               <div class="yb-row"><span>TWA</span><span>${Math.round(twa)}°</span></div>
+              <div class="yb-row"><span>TWD</span><span>${Math.round(w.direction)}°</span></div>
               <div class="yb-row"><span>TWS</span><span>${w.speed.toFixed(1)} kn</span></div>
             ` : ''}
+            <div class="yb-row"><span>BSP</span><span>${histDetail?.speed != null ? histDetail.speed.toFixed(1) + ' kn' : '—'}</span></div>
+            <div class="yb-row"><span>Cap</span><span>${histDetail?.course != null ? Math.round(histDetail.course) + '°' : '—'}</span></div>
             <div class="yb-row"><span>Position</span><span>${fmtCoords(hist.lat, hist.lon)}</span></div>
-            <div class="yb-row"><span>Âge</span><span>il y a ${histAgeMin} min</span></div>
           </div>`;
         updateTimelineBadge(hist.lat, hist.lon, { timestamp: hist.at, popup });
         return;
@@ -308,12 +310,15 @@
             const dLon = (currentLast?.lon ?? start.lon) - start.lon;
             const pLat = p.lat + dLat;
             const pLon = p.lon + dLon;
+            const twd = ((p.course + p.twa) + 360) % 360;
+            const utcStr = new Date(timestamp).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
             const popup = `
               <div class="yb-popup">
-                <div class="yb-time">Projection @ ${new Date(timestamp).toLocaleString('fr-FR')}</div>
+                <div class="yb-time">Routage — ECMWF</div>
+                <div class="yb-row"><span>Heure UTC</span><span>${utcStr}</span></div>
                 <div class="yb-row"><span>Delta</span><span>+${deltaH.toFixed(1)} h</span></div>
-                <div class="yb-row"><span>Source</span><span>polaire + Windy (ECMWF)</span></div>
                 <div class="yb-row"><span>TWA</span><span>${Math.round(p.twa)}°</span></div>
+                <div class="yb-row"><span>TWD</span><span>${Math.round(twd)}°</span></div>
                 <div class="yb-row"><span>TWS</span><span>${p.tws.toFixed(1)} kn</span></div>
                 <div class="yb-row"><span>BSP</span><span>${p.speed.toFixed(1)} kn</span></div>
                 <div class="yb-row"><span>Cap</span><span>${Math.round(p.course)}°</span></div>
@@ -421,6 +426,8 @@
           if (!p) return;
           const badgeLat = p.lat + dLat;
           const badgeLon = p.lon + dLon;
+          const twd = ((p.course + p.twa) + 360) % 360;
+          const utcStr = new Date(p.at).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
           const icon = L.divIcon({
             className: '',
             html: `<div class="extrap-badge extrap-polar">${h}h</div>`,
@@ -429,12 +436,14 @@
           const m = L.marker([badgeLat, badgeLon], { icon, interactive: true }).addTo(map);
           m.bindPopup(`
             <div class="yb-popup">
-              <div class="yb-time">Projection +${h}h — routage TWA constant</div>
-              <div class="yb-row"><span>Hypothèse</span><span>polaire + Windy forecast</span></div>
+              <div class="yb-time">Routage +${h}h — ECMWF</div>
+              <div class="yb-row"><span>Heure UTC</span><span>${utcStr}</span></div>
+              <div class="yb-row"><span>Delta</span><span>+${h} h</span></div>
               <div class="yb-row"><span>TWA</span><span>${Math.round(p.twa)}°</span></div>
-              <div class="yb-row"><span>TWS prévu</span><span>${p.tws.toFixed(1)} kn</span></div>
-              <div class="yb-row"><span>Vitesse estimée</span><span>${p.speed.toFixed(1)} kn</span></div>
-              <div class="yb-row"><span>Cap calculé</span><span>${Math.round(p.course)}°</span></div>
+              <div class="yb-row"><span>TWD</span><span>${Math.round(twd)}°</span></div>
+              <div class="yb-row"><span>TWS</span><span>${p.tws.toFixed(1)} kn</span></div>
+              <div class="yb-row"><span>BSP</span><span>${p.speed.toFixed(1)} kn</span></div>
+              <div class="yb-row"><span>Cap</span><span>${Math.round(p.course)}°</span></div>
               <div class="yb-row"><span>Position</span><span>${fmtCoords(badgeLat, badgeLon)}</span></div>
               <div class="yb-row"><span>Note</span><span><i>indicatif</i></span></div>
             </div>
